@@ -274,3 +274,46 @@ def test_rejecting_seeded_hazard_interpretation_preserves_rejection_without_chan
     assert picture["denied_areas"] == []
     assert picture["projection"]["source"] == "Scenario Seed"
     assert picture["projection"]["accepted_event_count"] == 0
+
+
+def test_accepted_denied_area_generates_route_variants_with_avoid_polygon_evaluation() -> None:
+    ledger_store = InMemoryEventLedgerStore()
+    proposed_store = InMemoryProposedInterpretationStore()
+    client = TestClient(
+        create_app(
+            event_ledger_store=ledger_store,
+            proposed_interpretation_store=proposed_store,
+        )
+    )
+    interpretation_id = "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+
+    client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-route-dagger-hazard"},
+    )
+    client.post(f"/interpretations/proposed/{interpretation_id}/accept")
+    picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert picture_response.status_code == 200
+    picture = picture_response.json()
+    assert picture["denied_areas"][0]["denied_area_id"] == "da-route-dagger-checkpoint-slate"
+
+    generated_routes = picture["generated_routes"]
+    assert [route["route_id"] for route in generated_routes] == [
+        "route-variant-route-dagger-baseline",
+        "route-variant-route-dagger-western-bypass",
+    ]
+    assert generated_routes[0]["source"] == "Deterministic Local Route Generator"
+    assert generated_routes[0]["requested_avoid_polygon_count"] == 1
+    assert generated_routes[0]["evaluation"] == {
+        "status": "conflicts_with_denied_area",
+        "conflicting_denied_area_ids": ["da-route-dagger-checkpoint-slate"],
+    }
+    assert generated_routes[1]["requested_avoid_polygon_count"] == 1
+    assert generated_routes[1]["evaluation"] == {
+        "status": "avoids_denied_areas",
+        "conflicting_denied_area_ids": [],
+    }
+    assert generated_routes[1]["summary"] == (
+        "Western bypass from LSA South Dock to LRP Bravo avoiding Checkpoint Slate."
+    )
