@@ -28,9 +28,17 @@ class DeniedArea(BaseModel):
     polygon: list[EventCoordinate]
 
 
+class SupplySignal(BaseModel):
+    unit_id: str
+    tracked_supply: str
+    current_quantity: float
+    daily_burn_rate_multiplier: float
+    reason: str
+
+
 class AcceptedDomainEvent(BaseModel):
     event_id: str
-    event_type: Literal["position_update", "denied_area_created"]
+    event_type: Literal["position_update", "denied_area_created", "supply_signal"]
     subject_id: str
     source_callsign: str
     occurred_at: datetime
@@ -39,6 +47,7 @@ class AcceptedDomainEvent(BaseModel):
     evidence: list[EventEvidence] = Field(default_factory=list)
     position: EventCoordinate | None = None
     denied_area: DeniedArea | None = None
+    supply_signal: SupplySignal | None = None
 
     @model_validator(mode="after")
     def require_event_payload(self) -> "AcceptedDomainEvent":
@@ -47,6 +56,9 @@ class AcceptedDomainEvent(BaseModel):
 
         if self.event_type == "denied_area_created" and self.denied_area is None:
             raise ValueError("denied_area_created events require a denied_area payload")
+
+        if self.event_type == "supply_signal" and self.supply_signal is None:
+            raise ValueError("supply_signal events require a supply_signal payload")
 
         return self
 
@@ -143,6 +155,7 @@ class PostgresEventLedgerStore:
                     "evidence": row["evidence"],
                     "position": row["payload"].get("position"),
                     "denied_area": row["payload"].get("denied_area"),
+                    "supply_signal": row["payload"].get("supply_signal"),
                 }
             )
             for row in rows
@@ -187,5 +200,8 @@ def accepted_event_payload(event: AcceptedDomainEvent) -> dict[str, object]:
 
     if event.denied_area is not None:
         payload["denied_area"] = event.denied_area.model_dump()
+
+    if event.supply_signal is not None:
+        payload["supply_signal"] = event.supply_signal.model_dump()
 
     return payload

@@ -46,6 +46,19 @@ export type NamedLocation = {
 
 export type SupplyStatus = "green" | "amber" | "red" | "black";
 
+export type InventoryProjection = {
+  source: string;
+  source_event_id: string | null;
+  baseline_days_of_supply: number | null;
+  projected_days_of_supply: number | null;
+  baseline_daily_burn_rate: number | null;
+  projected_daily_burn_rate: number | null;
+  burn_rate_change: string;
+  status_before: SupplyStatus;
+  status_after: SupplyStatus;
+  projected_black_time: string | null;
+};
+
 export type InventoryItem = {
   tracked_supply: string;
   class_of_supply: string;
@@ -54,6 +67,7 @@ export type InventoryItem = {
   status: SupplyStatus;
   days_of_supply: number | null;
   projected_black_time: string | null;
+  projection: InventoryProjection | null;
 };
 
 export type SupportedUnit = {
@@ -119,9 +133,17 @@ export type EventEvidence = {
   reference: string;
 };
 
+export type SupplySignal = {
+  unit_id: string;
+  tracked_supply: string;
+  current_quantity: number;
+  daily_burn_rate_multiplier: number;
+  reason: string;
+};
+
 export type AcceptedDomainEvent = {
   event_id: string;
-  event_type: "position_update" | "denied_area_created";
+  event_type: "position_update" | "denied_area_created" | "supply_signal";
   subject_id: string;
   source_callsign: string;
   occurred_at: string;
@@ -130,6 +152,7 @@ export type AcceptedDomainEvent = {
   evidence: EventEvidence[];
   position?: Coordinate;
   denied_area?: DeniedArea;
+  supply_signal?: SupplySignal;
 };
 
 export type ProjectionMetadata = {

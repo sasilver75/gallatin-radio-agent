@@ -317,3 +317,103 @@ def test_accepted_denied_area_generates_route_variants_with_avoid_polygon_evalua
     assert generated_routes[1]["summary"] == (
         "Western bypass from LSA South Dock to LRP Bravo avoiding Checkpoint Slate."
     )
+
+
+def test_accepted_supply_signal_updates_inventory_projection_and_status_band() -> None:
+    ledger_store = InMemoryEventLedgerStore()
+    client = TestClient(create_app(event_ledger_store=ledger_store))
+
+    seeded_picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert seeded_picture_response.status_code == 200
+    seeded_nomad_jp8 = inventory_item(
+        seeded_picture_response.json(),
+        unit_id="nomad",
+        tracked_supply="JP-8",
+    )
+    assert seeded_nomad_jp8["projection"] == {
+        "source": "Scenario Seed",
+        "source_event_id": None,
+        "baseline_days_of_supply": 2.8,
+        "projected_days_of_supply": 2.8,
+        "baseline_daily_burn_rate": 182.1,
+        "projected_daily_burn_rate": 182.1,
+        "burn_rate_change": "baseline",
+        "status_before": "green",
+        "status_after": "green",
+        "projected_black_time": None,
+    }
+
+    transmission_response = client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-jp8-burn-rate"},
+    )
+
+    assert transmission_response.status_code == 201
+    transmission = transmission_response.json()
+    assert transmission["interpretations"] == [
+        {
+            "interpretation_id": "interp-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+            "kind": "auto_accepted",
+            "domain_event_id": "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+            "summary": "Nomad 6 reports JP-8 burn rate at 3.2x baseline.",
+            "extracted_callsigns": ["Hammer 4", "Nomad 6"],
+        }
+    ]
+
+    ledger_response = client.get("/events/accepted")
+
+    assert ledger_response.status_code == 200
+    accepted_event = ledger_response.json()[0]
+    assert accepted_event["event_type"] == "supply_signal"
+    assert accepted_event["supply_signal"] == {
+        "unit_id": "nomad",
+        "tracked_supply": "JP-8",
+        "current_quantity": 510.0,
+        "daily_burn_rate_multiplier": 3.2,
+        "reason": "contact increased screen-line fuel consumption",
+    }
+
+    projected_picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert projected_picture_response.status_code == 200
+    projected_nomad_jp8 = inventory_item(
+        projected_picture_response.json(),
+        unit_id="nomad",
+        tracked_supply="JP-8",
+    )
+    assert projected_nomad_jp8["quantity"] == 510.0
+    assert projected_nomad_jp8["days_of_supply"] == 0.9
+    assert projected_nomad_jp8["projected_black_time"] == "2026-05-18T00:24:00Z"
+    assert projected_nomad_jp8["status"] == "red"
+    assert projected_nomad_jp8["projection"] == {
+        "source": "Event Ledger",
+        "source_event_id": "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+        "baseline_days_of_supply": 2.8,
+        "projected_days_of_supply": 0.9,
+        "baseline_daily_burn_rate": 182.1,
+        "projected_daily_burn_rate": 582.9,
+        "burn_rate_change": "3.2x baseline",
+        "status_before": "green",
+        "status_after": "red",
+        "projected_black_time": "2026-05-18T00:24:00Z",
+    }
+
+
+def inventory_item(
+    picture: dict[str, object],
+    unit_id: str,
+    tracked_supply: str,
+) -> dict[str, object]:
+    units = picture["supported_units"]
+    assert isinstance(units, list)
+    unit = next(
+        unit
+        for unit in units
+        if isinstance(unit, dict) and unit["id"] == unit_id
+    )
+    return next(
+        item
+        for item in unit["inventory"]
+        if isinstance(item, dict) and item["tracked_supply"] == tracked_supply
+    )
