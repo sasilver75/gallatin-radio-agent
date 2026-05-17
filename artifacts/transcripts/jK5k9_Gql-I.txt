@@ -1,0 +1,187 @@
+Hi, I'm Chad Walker. I'm an architect at Palantir. Today I have Daniel, the CTO of Gallatin.
+Thanks for joining me.
+Hey, thanks for having me.
+So what is Gallatin? What do you guys do?
+We build, I would say, rebuild defense logistics. We're a startup. We're founded officially
+1st of July 2024, so we're not that old yet. We're a startup, so we're quite humble. We
+start somewhere small. So right now we're solving tactical resupply, and we've built
+essentially everything on top of Palantir Foundry.
+That's pretty cool. So we say tactical resupply. That means, okay, I'm out on the battlefield
+and I need supplies to replenish my team. What does that mean? So just give a little
+flavor for people.
+Yeah, so I literally think best interaction is between brigade, battalion, so thousands
+of soldiers. They need to eat, they need to drink, they need rounds of ammunition, medical
+supplies, building materials, fuel, obviously. We make the process of sensing what are the
+supplies that are low on. We create course of actions for traditionally the S4 officer
+and then plan convoys and dispatch convoys to resupply. Sounds very simple. It's the
+most foundational set of processes that exist today. It's done very, very manually, and
+we started to automate a lot of these very mental processes with software.
+Yeah, that's pretty cool. Yeah, so I think about this, the manual process, it's phone
+calls, emails, spreadsheets, all these things being exchanged back and forth and it's hard
+to be very prescriptive, so everything's very reactive about it and then we're struggling
+to get things to the right place at the right time. So it sounds like the software you're
+building is really to try to connect that whole process together from the front line
+and giving that demand signal back so we get convoys moving, getting the troops resupplied
+as they need it so they're not lacking anything along the way.
+Yeah, exactly. We all know that you don't win a war with logistics, but you certainly
+lose them if you don't have your act together.
+So how did you get started as a company with your co-founder and then how did you
+kind of really get started in the Palantir ecosystem too?
+Yeah, so we're three co-founders. Woody Clear is our co-founder and CEO. I'm Danny Buchman,
+co-founder and CTO and then we have Brian Ballett, who is our head of product, chief
+product officer. We all come from very different backgrounds. So Woody most recently was at scale,
+a Palantir a long time ago. Brian had his own startup that successfully exited in the kind
+of augmented reality and warehouse optimization space and my past is I was at Amazon a long
+time ago. I co-founded Amazon Prime Air and that was a long time ago and so since then I built
+engineering teams at mostly deep tech startups ranging from tele-driving, self-driving,
+more drone delivery and most recently I built up the engineering team at Vast Space,
+so we built a commercial space station in Lower Forbid and then Woody and I got together
+in spring 2024 and introduced through 8VC who led our series seed round.
+This is really an important problem to solve and it's one of these problems that is so unsexy.
+If you think about like AI is being used in intelligence and in C2 in terms of defense
+context, right? But logistics is really left in the dust because it's always kind of a stepchild.
+It doesn't really see the true investments and I think Joel Onstale saw that potential a long time
+ago and was looking for the right moment and built the right team and so that's how we started.
+So okay, definitely there's the Palantir heritage amongst your founders, amongst your investors.
+I see in the background there I think a four-time winner at DevCon.
+So you've been really building on Palantir involved in the developer community,
+like so you're building your startup on Palantir. Why?
+It's interesting, right? Full disclosure before co-founding Gallatin, I heard about Palantir.
+I didn't really consider it as a cloud provider. The thing is like when you deploy
+into mission-critical environments such as anything in defense obviously but other
+fields as well in enterprises, you really need a partner or a cloud provider where
+you can from day one be assured that what you're doing is, you know, comes with the required safeguards
+and a lot of times there is requirements, right? If you deploy to an Army customer
+they're very specific requirements. So can you be impact level five or IL-5 compliant?
+IL-6 is another like a high level and the main reason we did this and we would do this
+like any second again is because it just got us to surfing our customers with software much,
+much faster. Like I couldn't imagine another, you know, another scenario, a faster scenario.
+And for us like you can imagine for the startup like the zero to one is like everything is about
+speed. And then once you're there, meaning like once you deploy it to customers, how can you iterate
+quickly? And this is not an antiquated process, right? Of like burning CD-ROMs or something like that
+because you're in a protect environment, you know, with the right access tokens you can deploy,
+you know, go through all the security checks but you can actually really lease on a weekly or
+every other week basis into Maven smart system. And so that's super, super exciting for us to
+be able to deliver software to our customers in like in hours basically rather than days or weeks.
+Yeah, I love that. Because that's a thing I hear a lot about is, you know, software engineers like
+give me the raw tools in, you know, AWS or Azure or somewhere else. Let me go build my software and
+let me be a software engineer but in Palantir it's too abstract or this or that. But like I hear you
+being I'm focused on the outcomes that matter for my customer and Palantir helps me get there
+faster but I can still do the real engineering work. And so it's this balance that is different
+and I think makes normally kind of makes me feel uncomfortable but embracing that focus on speed
+and outcome even in these highly contested environments or in these secure environments,
+like that's what it's about. That's exactly right. And I think the other element is,
+you know, Palantir is now a huge company, at least, you know, from like from number of employees,
+market capital. We're small, like we're like 40, 45 people now, you know, built that up from
+scratch in 90 months. But we have a joint Slack channel with you all and there's like 120 people
+when I lost check in our joint Slack channel. And as you know, like we're just like 40 plus people
+and I can tell you there's not all employees of Gallatin are in that joint Slack channel. So
+I'm trying to say in a long, in a long-winded way is that the attention to feedback from Palantir
+is like unmatched, like we complain a lot, we have features, we find a lot of bugs. And the amazing
+thing is like you guys care, right? So Palantir cares to hear feedback and implement that very
+quickly. You know, sometimes it's a P0 ticket on Palantir's side that we trigger and being
+being part of building this, it feels like being part of building the platform together,
+like we're obviously a customer. And so I think DEF CON series has been amazing because it really
+brings back together like all these engineers from the customer side as well as Palantir side.
+Yeah, that's awesome. All right, should we take a look at some cool product and demo?
+Yeah, let's do it. All right, walk me through it here.
+Cool. So this is navigated, deployed into NathanSmart system. We're looking at a demo instance
+here, obviously unclassified, so notional data. Let's dive into our demo unit, which is the third
+IBCT. What this shows you is a logistics common operating picture. And it shows you at one glance
+how we're doing, how are the units doing? Just to give you a little bit of guidance,
+the color coding is absolutely standard in defense logistics. Essentially,
+you can see over here, these are what are called classes of supplies indicated here.
+Green obviously means good. Yellow, this, you know, you can set the thresholds,
+but it's around maybe 60%. And then red is below that. And then black is like you're basically
+in trouble. What you're trying, generally speaking, what you're trying to optimize for is that the
+unit has what's called days of supplies for roughly three days. So that's kind of the
+rhythm how supplies are planned. And you want to basically make sure that with the current supplies,
+they can sustain themselves for about three days. And so that's really what's indicated here.
+As a result, a lot of times you see that time horizon as well. And in this case, up to 96 hours,
+not just 72 hours. So what we can do here is dive into a specific unit. So we'll pick the
+three, four calf can go straight to the inventory. What we're seeing here is an overview of that unit's
+inventory on hand, what they expect to have in 24 hours, 48, and so on. What you have to
+understand here is these are not actual values. These are models, predictions from navigator,
+and obviously can be overwritten by human at any point of time. The human is always in control.
+But let's play through a scenario of our core, I would say our core workflow. So let's say they,
+we just heard over radio that their MRE, so that stands for meals ready to eat, got totally wiped
+out. So food is important. We save this. And essentially what we're seeing here is
+we're each generating course of actions. This is usually done over hours by a whole team. And we
+already see here now course of action is updated. So what that means in reality is that we obviously
+need to supply them. And we can go to the log sync matrix. The log sync matrix is very standard tool
+to understand what are the movements of convoys, resupply convoys. Usually you hold a log sync
+meeting twice a day. That's kind of the rhythm. So we can expect here the three, four calf.
+Let me see. Three, four calf is down here. They need to be resupplied. Let me just make sure. Yep,
+that's three, four calf. So you can see the dates are totally off here. We have a time simulation
+aspect here. So this is our users love using this in wargaming scenarios. And so that's why you can
+actually simulate time. So that's why it's not the real time showing here. And then yeah, we can see
+the load plan. That's exactly right. So it shows that we're currently at zero MREs. We're going to
+resupply them with 257. And then they're going to be at 257, of course. This breaks down. You can
+see what is the convoy made up of. And we'll see MREs showing up here. You can see utilization of
+the actual underlying what we call prime movers. So transporting assets essentially. Yeah, so that's
+the bread and butter, like you approve a convoy. And then that gets dispatched in the case of autonomous
+convoys, we can do this automatically. So we've worked with Kodiak during an exercise in Hawaii,
+at Scofield Barracks, where we demonstrated, you know, the whole supply resupply workflow from
+sensing that there's a shortfall at a downrange unit to coming up the course of action
+to automatically dispatching one of the Red Defected Ford F-150 trucks, autonomous,
+fully automated end-to-end. So yeah, that's the core.
+As long as you just play this back, I can listen to radio traffic. I can look for other signals
+of things, automatically understand what that means, understand the overarching orders that I
+have and the importance of the resupply of different components. I can then create convoys,
+now even dispatch autonomous convoys to be able to actually get that resupply out to the different
+groups in the field, all coordinated through one piece of software as part of MAVEN and what GAL.
+That's right. Yeah, it's obviously early days in terms of autonomous resupplies, but we very well
+understand that if you send out a convoy with fuel without needing human onboard, it's much,
+much safer overall. If you can send out instead of a column of vehicle, convoy vehicles, if you
+can send them out more like a swarm autonomously, again, you have a much higher survivability
+of the actual supplies reaching the destination. So I think these are critical components to building
+new types of defense logistics. And yes, we're supporting that with Navigator today.
+Yeah, that is very cool. I appreciate you taking the time to show me this. This is pretty interesting
+to see that, like you said, the unsexy things, but they're just so important to have all the
+right supplies at the right place at the right time. And there's a lot of crossover between the
+stuff I work on in commercial and this space, but it goes back to that exact same concept of I have
+to have the right stuff at the right place, right time. Now you have different requirements and
+environments you're working in and other things. And I think it's neat that you're adapting all
+of these things to really meet people where they are. Yeah, at Gallatin, we believe in building
+beautiful software that is fast, like solves the problem super responsive. And I think,
+you know, everyone is used to amazing apps from Walmart, Amazon, right? And there's used to getting
+things in the next couple of hours, or one or two day delivery. And we just feel the warfighter
+deserves the same in terms of defense logistics, right? So again, what we just talked about this
+tactical resupply, but this is just the start, right? Like there's so much more that is broken
+that we feel we can we can fix and just make the life much, much easier and more successful outcomes
+ultimately. Yeah, and to that point, I guess, maybe what are you excited about? There's so much
+going on in the tech world. There's all the stuff going in defense tech. What are you excited about?
+Like computer you what people generally speak about computer use agents. So the fact that it can
+use your computer, like you are able to do that's exciting. And the asynchronous nature
+is what really fascinates us. And then I would say that's a bit further outlook. We're working on
+that with experimenting with that. I think what you guys introduced with long running agents,
+in foundry, makes a lot of sense, right? Like it's a step towards that.
+Because a lot of times we're already seeing that like you have, you know,
+authentic workflows that that do take minutes or like in the, you know, dozens of minutes already,
+and because they're chains of agents working on a on a on a resupply solution, for example.
+And I think the other thing that that we are excited about this, what we talked about earlier
+of the supply signals, you want to like make it as easy as possible for the warfighter not to have
+to enter locks that's manual in a keyboard, right? That's definitely supported. That's the core
+workflow today. But obviously the best what we say the best locks that is no locks that meaning
+like it's automatically sensed. So we're working on, you know, integration with let's say fuel level.
+So believe it or not, like fuel is still measured with dipsticks in what's called bulk bulk fueler.
+So 2500 gallon someone goes with a dipstick measures, you know, how high up the wetness is
+from the fuel and then reports that. And so those are simple scenarios we're working on
+to start to to build like an end to end feedback cycle that is that doesn't need human human input
+for for for these basic consumption cycles. Yeah, I mean, it comes back to the OODA loop,
+right? Everything still seems to be focused on OODA loop and getting everything, you know,
+the observatory and the tech and act is still so important today now with agents. I don't think
+anyone would have thought that we think about agents, but it really is. And that longer running
+agent piece too is I think so important because it frees up the warfighter or the executive to be
+strategic, which is really the important piece. And the agents are doing the tactical work.
+And that really is the one plus one is equal to three math that we're looking for that it's not
+just this additive that is a stepwise change in how we operate. Yeah, I mean, this is huge, right?
+I think the vision of of every warfighter has access to an agent is is not a strange vision,
+I believe, right? I think it's it's going to take some time for this to happen. But we like,
+we need to be part of this revolution, right? Because there's a revolution in the commercial
+world is happening very, very quickly. And in my opinion, in our opinion, there's no reason
+why the warfighter should be left in the dust again when it comes to that. So I think that's the,
+you know, that's what really drives us, right? It's like to build like as as equivalent as possible
+solutions for our warfighters. Yeah, that's awesome. Well, Daniel, I appreciate the time today. This
+is awesome. I hope people can understand and appreciate the hard work you're doing here. So
+thanks for joining me. Yeah, you bet. Thank you so much for having me.
