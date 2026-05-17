@@ -655,6 +655,31 @@ def test_addressed_last_thirty_intent_returns_grounded_rollup_without_mutating_s
                     "2026-05-18T00:24:00Z. Review Route Dagger Western Bypass / "
                     "Nomad JP-8 Resupply."
                 ),
+                "outbound_audio": {
+                    "audio_id": (
+                        "oa-resp-rt-lognet-1-hammer-4-quarterback-last-thirty-"
+                        "last-thirty-resupply-impact"
+                    ),
+                    "source_kind": "addressed_response",
+                    "source_id": (
+                        "resp-rt-lognet-1-hammer-4-quarterback-last-thirty-"
+                        "last-thirty-resupply-impact"
+                    ),
+                    "voice": "Quarterback deterministic fixture voice",
+                    "content_type": "audio/wav",
+                    "duration_seconds": 12.0,
+                    "fixture_uri": (
+                        "fixture://outbound-audio/oa-resp-rt-lognet-1-hammer-4-"
+                        "quarterback-last-thirty-last-thirty-resupply-impact.wav"
+                    ),
+                    "generated_at": "2026-05-17T03:26:00Z",
+                    "transcript": (
+                        "Hammer 4, Quarterback. Last thirty: Route Dagger denied near "
+                        "Checkpoint Slate; Nomad JP-8 red, 0.9 DOS, black at "
+                        "2026-05-18T00:24:00Z. Review Route Dagger Western Bypass / "
+                        "Nomad JP-8 Resupply."
+                    ),
+                },
                 "grounding": [
                     {
                         "kind": "event_ledger",
@@ -690,6 +715,74 @@ def test_addressed_last_thirty_intent_returns_grounded_rollup_without_mutating_s
     picture_after = client.get("/scenarios/kaohsiung-tainan/logistics-picture").json()
     assert picture_after["supply_convoy"] == picture_before["supply_convoy"]
     assert picture_after["executable_coas"][0]["decision_status"] == "proposed"
+
+
+def test_coa_approval_generates_mule_2_draft_transmission_outbound_audio_after_approval() -> None:
+    client = coa_decision_test_client()
+    build_nomad_route_dagger_coa(client)
+
+    proposed_picture = client.get("/scenarios/kaohsiung-tainan/logistics-picture").json()
+
+    assert proposed_picture["draft_transmissions"] == []
+
+    approval_response = client.post(
+        "/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/approve"
+    )
+
+    assert approval_response.status_code == 201
+    approval_event = approval_response.json()
+    approved_picture = client.get("/scenarios/kaohsiung-tainan/logistics-picture").json()
+    assert approved_picture["draft_transmissions"] == [
+        {
+            "draft_transmission_id": (
+                "draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-mule-2"
+            ),
+            "status": "approved_for_outbound",
+            "radio_channel": "LOGNET-1",
+            "sender_callsign": "Quarterback",
+            "recipient_callsign": "Mule 2",
+            "source_coa_id": "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+            "source_event_id": approval_event["event_id"],
+            "instruction": (
+                "Mule 2, Quarterback. Approved Route Dagger Western Bypass. "
+                "Load 480 gal JP-8 for Nomad; depart 2026-05-17T04:00:00Z."
+            ),
+            "outbound_audio": {
+                "audio_id": (
+                    "oa-draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-mule-2"
+                ),
+                "source_kind": "draft_transmission",
+                "source_id": (
+                    "draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-mule-2"
+                ),
+                "voice": "Quarterback deterministic fixture voice",
+                "content_type": "audio/wav",
+                "duration_seconds": 9.0,
+                "fixture_uri": (
+                    "fixture://outbound-audio/oa-draft-coa-route-dagger-western-"
+                    "bypass-nomad-jp8-resupply-mule-2.wav"
+                ),
+                "generated_at": approval_event["accepted_at"],
+                "transcript": (
+                    "Mule 2, Quarterback. Approved Route Dagger Western Bypass. "
+                    "Load 480 gal JP-8 for Nomad; depart 2026-05-17T04:00:00Z."
+                ),
+            },
+        }
+    ]
+
+
+def test_coa_rejection_does_not_generate_draft_transmission_outbound_audio() -> None:
+    client = coa_decision_test_client()
+    build_nomad_route_dagger_coa(client)
+
+    rejection_response = client.post(
+        "/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/reject"
+    )
+
+    assert rejection_response.status_code == 201
+    rejected_picture = client.get("/scenarios/kaohsiung-tainan/logistics-picture").json()
+    assert rejected_picture["draft_transmissions"] == []
 
 
 def inventory_item(

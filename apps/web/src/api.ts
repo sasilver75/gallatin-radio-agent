@@ -259,11 +259,24 @@ export type ResponseGrounding = {
   label: string;
 };
 
+export type OutboundAudio = {
+  audio_id: string;
+  source_kind: "addressed_response" | "draft_transmission";
+  source_id: string;
+  voice: string;
+  content_type: "audio/wav";
+  duration_seconds: number;
+  fixture_uri: string;
+  generated_at: string;
+  transcript: string;
+};
+
 export type QuarterbackAddressedResponse = {
   response_id: string;
   agent_callsign: string;
   summary: string;
   radio_brevity: string;
+  outbound_audio: OutboundAudio;
   grounding: ResponseGrounding[];
 };
 
@@ -294,6 +307,18 @@ export type RadioTransmission = {
   interpretations: RadioInterpretation[];
 };
 
+export type DraftTransmission = {
+  draft_transmission_id: string;
+  status: "approved_for_outbound";
+  radio_channel: string;
+  sender_callsign: string;
+  recipient_callsign: string;
+  source_coa_id: string;
+  source_event_id: string;
+  instruction: string;
+  outbound_audio: OutboundAudio;
+};
+
 export type LogisticsPictureScenario = {
   scenario_id: string;
   name: string;
@@ -309,6 +334,7 @@ export type LogisticsPictureScenario = {
   denied_areas: DeniedArea[];
   generated_routes: GeneratedRouteVariant[];
   executable_coas: ExecutableCourseOfAction[];
+  draft_transmissions: DraftTransmission[];
   projection: ProjectionMetadata;
   event_ledger: AcceptedDomainEvent[];
 };

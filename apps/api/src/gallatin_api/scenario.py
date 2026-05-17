@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from gallatin_api.event_ledger import AcceptedDomainEvent, DeniedArea, SupplySignal
+from gallatin_api.outbound_audio import OutboundAudio, deterministic_outbound_audio
 
 
 SupplyStatus = Literal["green", "amber", "red", "black"]
@@ -152,6 +153,18 @@ class ExecutableCourseOfAction(BaseModel):
     decision_event_id: str | None = None
 
 
+class DraftTransmission(BaseModel):
+    draft_transmission_id: str
+    status: Literal["approved_for_outbound"]
+    radio_channel: str
+    sender_callsign: str
+    recipient_callsign: str
+    source_coa_id: str
+    source_event_id: str
+    instruction: str
+    outbound_audio: OutboundAudio
+
+
 class ProjectionMetadata(BaseModel):
     source: str = "Scenario Seed"
     accepted_event_count: int = 0
@@ -172,6 +185,7 @@ class LogisticsPictureScenario(BaseModel):
     denied_areas: list[DeniedArea] = Field(default_factory=list)
     generated_routes: list[GeneratedRouteVariant] = Field(default_factory=list)
     executable_coas: list[ExecutableCourseOfAction] = Field(default_factory=list)
+    draft_transmissions: list[DraftTransmission] = Field(default_factory=list)
     projection: ProjectionMetadata = Field(default_factory=ProjectionMetadata)
     event_ledger: list[AcceptedDomainEvent] = Field(default_factory=list)
 
@@ -213,6 +227,7 @@ def project_logistics_picture(
     projected.generated_routes = generate_route_variants(projected)
     projected.executable_coas = generate_executable_coas(projected, accepted_events)
     apply_coa_decisions(projected, accepted_events)
+    projected.draft_transmissions = generate_draft_transmissions(projected, accepted_events)
     projected.event_ledger = accepted_events
     return projected
 
@@ -398,6 +413,89 @@ def selected_coa_movement(
         return coa.movements[0] if coa.movements else None
 
     return next((movement for movement in coa.movements if movement.movement_id == movement_id), None)
+
+
+def generate_draft_transmissions(
+    scenario: LogisticsPictureScenario,
+    accepted_events: list[AcceptedDomainEvent],
+) -> list[DraftTransmission]:
+    drafts: list[DraftTransmission] = []
+    for event in accepted_events:
+        if event.event_type != "coa_decision" or event.coa_decision is None:
+            continue
+
+        decision = event.coa_decision
+        if decision.decision != "approved":
+            continue
+
+        coa = executable_coa_by_id(scenario, decision.coa_id)
+        if coa is None:
+            continue
+
+        movement = selected_coa_movement(coa, decision.movement_id)
+        if movement is None:
+            continue
+
+        draft_id = f"draft-{coa.coa_id}-{slugify(scenario.supply_convoy.callsign)}"
+        instruction = draft_transmission_instruction(
+            scenario=scenario,
+            movement=movement,
+        )
+        generated_at = format_utc_timestamp(event.accepted_at)
+        drafts.append(
+            DraftTransmission(
+                draft_transmission_id=draft_id,
+                status="approved_for_outbound",
+                radio_channel=scenario.radio_channel,
+                sender_callsign=scenario.agent_callsign,
+                recipient_callsign=scenario.supply_convoy.callsign,
+                source_coa_id=coa.coa_id,
+                source_event_id=event.event_id,
+                instruction=instruction,
+                outbound_audio=deterministic_outbound_audio(
+                    source_kind="draft_transmission",
+                    source_id=draft_id,
+                    transcript=instruction,
+                    generated_at=generated_at,
+                    duration_seconds=9.0,
+                ),
+            )
+        )
+
+    return drafts
+
+
+def draft_transmission_instruction(
+    scenario: LogisticsPictureScenario,
+    movement: CoaMovement,
+) -> str:
+    logpac_phrase = "; ".join(
+        format_logpac_instruction(item)
+        for item in movement.logpac
+    ) or "No LOGPAC load change"
+    return (
+        f"{scenario.supply_convoy.callsign}, {scenario.agent_callsign}. "
+        f"Approved {movement.route_name}. {logpac_phrase}; depart {movement.depart_at}."
+    )
+
+
+def format_logpac_instruction(item: CoaLogpacItem) -> str:
+    return (
+        f"Load {format_radio_quantity(item.quantity)} {item.unit} "
+        f"{item.tracked_supply} for {item.destination_callsign}"
+    )
+
+
+def format_radio_quantity(quantity: float) -> str:
+    numeric_quantity = float(quantity)
+    if numeric_quantity.is_integer():
+        return str(int(numeric_quantity))
+
+    return f"{numeric_quantity:g}"
+
+
+def slugify(value: str) -> str:
+    return "-".join(value.lower().split())
 
 
 def projected_location_id_for_subject(
