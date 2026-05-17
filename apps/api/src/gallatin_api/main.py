@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -9,6 +9,14 @@ from gallatin_api.event_ledger import (
     PostgresEventLedgerStore,
 )
 from gallatin_api.readiness import DependencyStatus, ReadinessResponse, check_postgis
+from gallatin_api.radio import (
+    FixtureTranscriptionPipeline,
+    PrerecordedRadioClipNotFound,
+    PublicPrerecordedRadioClip,
+    RadioTransmission,
+    RadioTransmissionRequest,
+    TranscriptionPipeline,
+)
 from gallatin_api.scenario import (
     LogisticsPictureScenario,
     load_kaohsiung_tainan_logistics_picture,
@@ -24,6 +32,7 @@ def create_app(
     readiness_checker: ReadinessChecker | None = None,
     scenario_provider: ScenarioProvider | None = None,
     event_ledger_store: EventLedgerStore | None = None,
+    transcription_pipeline: TranscriptionPipeline | None = None,
 ) -> FastAPI:
     settings = get_settings()
     app = FastAPI(
@@ -34,6 +43,7 @@ def create_app(
     checker = readiness_checker or check_postgis
     provide_scenario = scenario_provider or load_kaohsiung_tainan_logistics_picture
     ledger_store = event_ledger_store or PostgresEventLedgerStore(settings.database_url)
+    radio_transcription = transcription_pipeline or FixtureTranscriptionPipeline()
 
     app.add_middleware(
         CORSMiddleware,
@@ -81,6 +91,23 @@ def create_app(
     @app.get("/events/accepted", response_model=list[AcceptedDomainEvent])
     def accepted_events() -> list[AcceptedDomainEvent]:
         return ledger_store.list_events()
+
+    @app.get("/radio/prerecorded-clips", response_model=list[PublicPrerecordedRadioClip])
+    def prerecorded_radio_clips() -> list[PublicPrerecordedRadioClip]:
+        return radio_transcription.list_prerecorded_clips()
+
+    @app.post(
+        "/radio/transmissions",
+        response_model=RadioTransmission,
+        status_code=201,
+    )
+    def transmit_prerecorded_radio_clip(
+        request: RadioTransmissionRequest,
+    ) -> RadioTransmission:
+        try:
+            return radio_transcription.transcribe_prerecorded_clip(request.clip_id)
+        except PrerecordedRadioClipNotFound as exc:
+            raise HTTPException(status_code=404, detail="Prerecorded Radio Clip not found") from exc
 
     return app
 

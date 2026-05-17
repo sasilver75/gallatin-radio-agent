@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
   Bounds,
@@ -6,10 +6,14 @@ import {
   InventoryItem,
   LogisticsPictureScenario,
   NamedLocation,
+  PrerecordedRadioClip,
+  RadioTransmission,
   ReadinessResponse,
   SupplyStatus,
   fetchLogisticsPicture,
-  fetchReadiness
+  fetchPrerecordedRadioClips,
+  fetchReadiness,
+  transmitPrerecordedRadioClip
 } from "./api";
 import "./App.css";
 
@@ -22,6 +26,17 @@ type ReadinessLoadState =
 type PictureLoadState =
   | { kind: "loading" }
   | { kind: "ready"; picture: LogisticsPictureScenario }
+  | { kind: "error"; message: string };
+
+type PrerecordedClipsLoadState =
+  | { kind: "loading" }
+  | { kind: "ready"; clips: PrerecordedRadioClip[] }
+  | { kind: "error"; message: string };
+
+type TransmissionLoadState =
+  | { kind: "idle" }
+  | { kind: "transcribing" }
+  | { kind: "ready"; transmission: RadioTransmission }
   | { kind: "error"; message: string };
 
 type MapEntity = {
@@ -45,6 +60,12 @@ function App() {
   });
   const [pictureState, setPictureState] = useState<PictureLoadState>({
     kind: "loading"
+  });
+  const [clipsState, setClipsState] = useState<PrerecordedClipsLoadState>({
+    kind: "loading"
+  });
+  const [transmissionState, setTransmissionState] = useState<TransmissionLoadState>({
+    kind: "idle"
   });
 
   useEffect(() => {
@@ -70,6 +91,42 @@ function App() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchPrerecordedRadioClips()
+      .then((clips) => {
+        if (!active) return;
+        setClipsState({ kind: "ready", clips });
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setClipsState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown Prerecorded Radio Clip error"
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function transmitClip(clipId: string) {
+    setTransmissionState({ kind: "transcribing" });
+
+    transmitPrerecordedRadioClip(clipId)
+      .then((transmission) => {
+        setTransmissionState({ kind: "ready", transmission });
+      })
+      .catch((error: unknown) => {
+        setTransmissionState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown transcription error"
+        });
+      });
+  }
 
   useEffect(() => {
     let active = true;
@@ -112,7 +169,12 @@ function App() {
         <LogisticsStatusPanel pictureState={pictureState} readinessState={readinessState} />
       </section>
 
-      <WorkspacePanels pictureState={pictureState} />
+      <WorkspacePanels
+        pictureState={pictureState}
+        clipsState={clipsState}
+        transmissionState={transmissionState}
+        onTransmitClip={transmitClip}
+      />
     </main>
   );
 }
@@ -296,7 +358,22 @@ function ScenarioStatusDetails({ pictureState }: { pictureState: PictureLoadStat
   );
 }
 
-function WorkspacePanels({ pictureState }: { pictureState: PictureLoadState }) {
+type WorkspacePanel = {
+  title: string;
+  body: ReactNode;
+};
+
+function WorkspacePanels({
+  pictureState,
+  clipsState,
+  transmissionState,
+  onTransmitClip
+}: {
+  pictureState: PictureLoadState;
+  clipsState: PrerecordedClipsLoadState;
+  transmissionState: TransmissionLoadState;
+  onTransmitClip: (clipId: string) => void;
+}) {
   const panels = useMemo(() => {
     if (pictureState.kind !== "ready") {
       return [
@@ -312,11 +389,18 @@ function WorkspacePanels({ pictureState }: { pictureState: PictureLoadState }) {
     return [
       {
         title: "Field Radio Console",
-        body: `${picture.logistics_watch_officer} monitors ${picture.radio_channel}.`
+        body: (
+          <FieldRadioConsole
+            clipsState={clipsState}
+            monitorText={`${picture.logistics_watch_officer} monitors ${picture.radio_channel}.`}
+            onTransmitClip={onTransmitClip}
+            transmissionState={transmissionState}
+          />
+        )
       },
       {
         title: "Evidence Pane",
-        body: `${picture.agent_callsign} has no Tactical Radio Audio evidence attached to this seed.`
+        body: <EvidencePane agentCallsign={picture.agent_callsign} transmissionState={transmissionState} />
       },
       {
         title: "Event Ledger",
@@ -330,8 +414,8 @@ function WorkspacePanels({ pictureState }: { pictureState: PictureLoadState }) {
         title: "COA Review",
         body: `${picture.supply_convoy.callsign} remains in ${picture.supply_convoy.movement_status}.`
       }
-    ];
-  }, [pictureState]);
+    ] satisfies WorkspacePanel[];
+  }, [clipsState, onTransmitClip, pictureState, transmissionState]);
 
   return (
     <section className="panel-strip" aria-label="Workspace lanes">
@@ -342,6 +426,85 @@ function WorkspacePanels({ pictureState }: { pictureState: PictureLoadState }) {
         </article>
       ))}
     </section>
+  );
+}
+
+function FieldRadioConsole({
+  clipsState,
+  monitorText,
+  transmissionState,
+  onTransmitClip
+}: {
+  clipsState: PrerecordedClipsLoadState;
+  monitorText: string;
+  transmissionState: TransmissionLoadState;
+  onTransmitClip: (clipId: string) => void;
+}) {
+  if (clipsState.kind === "loading") {
+    return <p className="muted">Loading Prerecorded Radio Clips...</p>;
+  }
+
+  if (clipsState.kind === "error") {
+    return <p className="failure">{clipsState.message}</p>;
+  }
+
+  if (clipsState.clips.length === 0) {
+    return <p>No Prerecorded Radio Clips are available.</p>;
+  }
+
+  return (
+    <div className="panel-details radio-console">
+      <p>{monitorText}</p>
+      {clipsState.clips.map((clip) => (
+        <div className="radio-clip" key={clip.clip_id}>
+          <strong>{clip.title}</strong>
+          <span>
+            {clip.source_callsign} on {clip.radio_channel}
+          </span>
+          <small>Audio file: {clip.audio.filename}</small>
+          <button
+            disabled={transmissionState.kind === "transcribing"}
+            onClick={() => onTransmitClip(clip.clip_id)}
+            type="button"
+          >
+            Transmit to {clip.radio_channel}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EvidencePane({
+  agentCallsign,
+  transmissionState
+}: {
+  agentCallsign: string;
+  transmissionState: TransmissionLoadState;
+}) {
+  if (transmissionState.kind === "idle") {
+    return <p>{agentCallsign} has no Tactical Radio Audio evidence attached to this seed.</p>;
+  }
+
+  if (transmissionState.kind === "transcribing") {
+    return <p className="muted">Transcribing Tactical Radio Audio...</p>;
+  }
+
+  if (transmissionState.kind === "error") {
+    return <p className="failure">{transmissionState.message}</p>;
+  }
+
+  const { transmission } = transmissionState;
+
+  return (
+    <div className="panel-details evidence-transcript">
+      <p>
+        {transmission.source_callsign} / {transmission.radio_channel}
+      </p>
+      <p className="transcript-text">{transmission.transcript}</p>
+      <p className="panel-evidence">{transmission.audio.filename}</p>
+      <p>{transmission.transcription.pipeline}</p>
+    </div>
   );
 }
 

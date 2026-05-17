@@ -1,8 +1,13 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
-import { LogisticsPictureScenario, ReadinessResponse } from "./api";
+import {
+  LogisticsPictureScenario,
+  PrerecordedRadioClip,
+  RadioTransmission,
+  ReadinessResponse
+} from "./api";
 
 const readyResponse: ReadinessResponse = {
   service: "gallatin-radio-agent-api",
@@ -123,6 +128,42 @@ const scenarioResponse: LogisticsPictureScenario = {
   event_ledger: []
 };
 
+const prerecordedClipsResponse: PrerecordedRadioClip[] = [
+  {
+    clip_id: "lognet-1-mule-2-checkpoint-slate",
+    title: "Mule 2 Checkpoint Slate Position Update",
+    radio_channel: "LOGNET-1",
+    source_callsign: "Mule 2",
+    recorded_at: "2026-05-17T03:12:00Z",
+    audio: {
+      filename: "lognet-1-mule-2-checkpoint-slate.wav",
+      content_type: "audio/wav",
+      duration_seconds: 7.4,
+      fixture_uri: "fixture://tactical-radio/lognet-1-mule-2-checkpoint-slate.wav"
+    }
+  }
+];
+
+const radioTransmissionResponse: RadioTransmission = {
+  transmission_id: "rt-lognet-1-mule-2-checkpoint-slate",
+  clip_id: "lognet-1-mule-2-checkpoint-slate",
+  radio_channel: "LOGNET-1",
+  source_callsign: "Mule 2",
+  recorded_at: "2026-05-17T03:12:00Z",
+  audio: {
+    filename: "lognet-1-mule-2-checkpoint-slate.wav",
+    content_type: "audio/wav",
+    duration_seconds: 7.4,
+    fixture_uri: "fixture://tactical-radio/lognet-1-mule-2-checkpoint-slate.wav"
+  },
+  transcript:
+    "Hammer 4, Mule 2 passing Checkpoint Slate now. Convoy remains green, estimate LRP Bravo in 18 mikes.",
+  transcription: {
+    pipeline: "Fixture Transcription Pipeline",
+    fixture_id: "mule-2-checkpoint-slate-transcript"
+  }
+};
+
 describe("App", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -238,18 +279,52 @@ describe("App", () => {
     expect(screen.getByText("Hauler 8 reports passing Checkpoint Slate.")).toBeInTheDocument();
     expect(screen.getByText("TESTNET-7 transmission 004")).toBeInTheDocument();
   });
+
+  it("submits Prerecorded Radio Clip audio and renders the transcript in the Evidence Pane", async () => {
+    mockApiFetch();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Mule 2 Checkpoint Slate Position Update")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transmit to LOGNET-1" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Hammer 4, Mule 2 passing Checkpoint Slate now. Convoy remains green, estimate LRP Bravo in 18 mikes."
+        )
+      ).toBeInTheDocument();
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith("http://localhost:8000/radio/prerecorded-clips");
+    expect(globalThis.fetch).toHaveBeenCalledWith("http://localhost:8000/radio/transmissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clip_id: "lognet-1-mule-2-checkpoint-slate" })
+    });
+    expect(screen.getByText("Mule 2 / LOGNET-1")).toBeInTheDocument();
+    expect(screen.getByText("lognet-1-mule-2-checkpoint-slate.wav")).toBeInTheDocument();
+    expect(screen.getByText("Fixture Transcription Pipeline")).toBeInTheDocument();
+  });
 });
 
 function mockApiFetch({
   readiness = readyResponse,
   readinessStatus = 200,
   scenario = scenarioResponse,
-  scenarioStatus = 200
+  scenarioStatus = 200,
+  prerecordedClips = prerecordedClipsResponse,
+  transmission = radioTransmissionResponse
 }: {
   readiness?: ReadinessResponse;
   readinessStatus?: number;
   scenario?: LogisticsPictureScenario;
   scenarioStatus?: number;
+  prerecordedClips?: PrerecordedRadioClip[];
+  transmission?: RadioTransmission;
 } = {}) {
   vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -260,6 +335,14 @@ function mockApiFetch({
 
     if (url === "http://localhost:8000/scenarios/kaohsiung-tainan/logistics-picture") {
       return Promise.resolve(jsonResponse(scenario, scenarioStatus));
+    }
+
+    if (url === "http://localhost:8000/radio/prerecorded-clips") {
+      return Promise.resolve(jsonResponse(prerecordedClips, 200));
+    }
+
+    if (url === "http://localhost:8000/radio/transmissions") {
+      return Promise.resolve(jsonResponse(transmission, 201));
     }
 
     return Promise.reject(new Error(`Unhandled fetch to ${url}`));
