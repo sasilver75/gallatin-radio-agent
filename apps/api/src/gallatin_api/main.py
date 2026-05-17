@@ -25,6 +25,8 @@ from gallatin_api.radio import (
     RadioTransmissionRequest,
     ReviewRequiredRadioInterpretation,
     TranscriptionPipeline,
+    AddressedIntentRadioInterpretation,
+    answer_addressed_intents,
     accepted_denied_area_event_for_interpretation,
     interpret_radio_transmission,
 )
@@ -159,7 +161,18 @@ def create_app(
             if isinstance(interpretation, ReviewRequiredRadioInterpretation):
                 proposed_store.upsert(interpretation)
 
-        return transmission.model_copy(update={"interpretations": interpreted.interpretations})
+        transmission = transmission.model_copy(update={"interpretations": interpreted.interpretations})
+        if any(
+            isinstance(interpretation, AddressedIntentRadioInterpretation)
+            for interpretation in interpreted.interpretations
+        ):
+            transmission = answer_addressed_intents(
+                transmission,
+                project_logistics_picture(provide_scenario(), ledger_store.list_events()),
+                proposed_store.list_interpretations(),
+            )
+
+        return transmission
 
     @app.post(
         "/interpretations/proposed/{interpretation_id}/accept",

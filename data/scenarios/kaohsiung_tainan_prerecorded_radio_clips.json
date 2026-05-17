@@ -49,5 +49,22 @@
       "fixture_id": "nomad-6-jp8-burn-rate-transcript",
       "transcript": "Hammer 4, Nomad 6, contact on the screen line. JP-8 burn rate is three point two times baseline; current fuel remains five one zero gallons."
     }
+  },
+  {
+    "clip_id": "lognet-1-hammer-4-quarterback-last-thirty",
+    "title": "Hammer 4 Quarterback Last Thirty Request",
+    "radio_channel": "LOGNET-1",
+    "source_callsign": "Hammer 4",
+    "recorded_at": "2026-05-17T03:26:00Z",
+    "audio": {
+      "filename": "lognet-1-hammer-4-quarterback-last-thirty.wav",
+      "content_type": "audio/wav",
+      "duration_seconds": 5.8,
+      "fixture_uri": "fixture://tactical-radio/lognet-1-hammer-4-quarterback-last-thirty.wav"
+    },
+    "transcription_fixture": {
+      "fixture_id": "hammer-4-quarterback-last-thirty-transcript",
+      "transcript": "Quarterback, Hammer 4. Give me the last thirty and impact to tonight's resupply."
+    }
   }
 ]
