@@ -4,9 +4,11 @@ import {
   AddressedIntentRadioInterpretation,
   Bounds,
   Coordinate,
+  DraftTransmission,
   InventoryItem,
   LogisticsPictureScenario,
   NamedLocation,
+  OutboundAudio,
   PrerecordedRadioClip,
   RadioTransmission,
   ReadinessResponse,
@@ -827,6 +829,7 @@ function AddressedIntentInterpretation({
         <div className="addressed-response">
           <p>{response.radio_brevity}</p>
           <small>{response.summary}</small>
+          <OutboundAudioDetails audio={response.outbound_audio} />
           <ul>
             {response.grounding.map((grounding) => (
               <li key={`${grounding.kind}-${grounding.reference}`}>
@@ -989,6 +992,49 @@ function coaReviewPanelBody(
           ) : null}
         </section>
       ))}
+      <DraftTransmissionList draftTransmissions={picture.draft_transmissions} />
+    </div>
+  );
+}
+
+function DraftTransmissionList({
+  draftTransmissions
+}: {
+  draftTransmissions: DraftTransmission[];
+}) {
+  if (draftTransmissions.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      {draftTransmissions.map((draft) => (
+        <section className="draft-transmission" key={draft.draft_transmission_id}>
+          <h3>Draft Transmission</h3>
+          <p>{draft.instruction}</p>
+          <small>
+            {draft.sender_callsign} to {draft.recipient_callsign} / {draft.radio_channel}
+          </small>
+          <small>{draft.source_event_id}</small>
+          <OutboundAudioDetails audio={draft.outbound_audio} />
+        </section>
+      ))}
+    </>
+  );
+}
+
+function OutboundAudioDetails({ audio }: { audio: OutboundAudio }) {
+  return (
+    <div className="outbound-audio">
+      <strong>Outbound Audio</strong>
+      <span>{audio.audio_id}</span>
+      <small>{audio.fixture_uri}</small>
+      <small>
+        {audio.voice} / {audio.duration_seconds.toFixed(1)}s / {audio.content_type}
+      </small>
+      <small>
+        {audio.source_kind}: {audio.source_id}
+      </small>
     </div>
   );
 }

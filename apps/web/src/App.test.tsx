@@ -129,6 +129,7 @@ const scenarioResponse: LogisticsPictureScenario = {
   denied_areas: [],
   generated_routes: [],
   executable_coas: [],
+  draft_transmissions: [],
   projection: {
     source: "Scenario Seed",
     accepted_event_count: 0
@@ -543,6 +544,32 @@ const scenarioAfterCoaApprovalResponse: LogisticsPictureScenario = {
     source: "Event Ledger",
     accepted_event_count: 3
   },
+  draft_transmissions: [
+    {
+      draft_transmission_id: "draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8",
+      status: "approved_for_outbound",
+      radio_channel: "LOGNET-1",
+      sender_callsign: "Backstop",
+      recipient_callsign: "Hauler 8",
+      source_coa_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+      source_event_id: approvedCoaDecisionEvent.event_id,
+      instruction:
+        "Hauler 8, Backstop. Approved Route Dagger Western Bypass. Load 480 gal JP-8 for Raven; depart 2026-05-17T04:00:00Z.",
+      outbound_audio: {
+        audio_id: "oa-draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8",
+        source_kind: "draft_transmission",
+        source_id: "draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8",
+        voice: "Quarterback deterministic fixture voice",
+        content_type: "audio/wav",
+        duration_seconds: 9,
+        fixture_uri:
+          "fixture://outbound-audio/oa-draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8.wav",
+        generated_at: approvedCoaDecisionEvent.accepted_at,
+        transcript:
+          "Hauler 8, Backstop. Approved Route Dagger Western Bypass. Load 480 gal JP-8 for Raven; depart 2026-05-17T04:00:00Z."
+      }
+    }
+  ],
   event_ledger: [...scenarioWithExecutableCoaResponse.event_ledger, approvedCoaDecisionEvent]
 };
 
@@ -601,6 +628,19 @@ const addressedIntentTransmissionResponse: RadioTransmission = {
           "Backstop rollup grounded in 2 Event Ledger entries, 0 pending Proposed Interpretations, and 1 generated Executable COA.",
         radio_brevity:
           "Anvil 3, Backstop. Last thirty: Route Dagger denied near Checkpoint Slate; Nomad JP-8 red, 0.9 DOS, black at 2026-05-18T00:24:00Z. Review Route Dagger Western Bypass / Nomad JP-8 Resupply.",
+        outbound_audio: {
+          audio_id: "oa-resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact",
+          source_kind: "addressed_response",
+          source_id: "resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact",
+          voice: "Quarterback deterministic fixture voice",
+          content_type: "audio/wav",
+          duration_seconds: 12,
+          fixture_uri:
+            "fixture://outbound-audio/oa-resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact.wav",
+          generated_at: "2026-05-17T03:26:00Z",
+          transcript:
+            "Anvil 3, Backstop. Last thirty: Route Dagger denied near Checkpoint Slate; Nomad JP-8 red, 0.9 DOS, black at 2026-05-18T00:24:00Z. Review Route Dagger Western Bypass / Nomad JP-8 Resupply."
+        },
         grounding: [
           {
             kind: "event_ledger",
@@ -940,6 +980,20 @@ describe("App", () => {
     expect(screen.getByText("Approved Movement Status: Route Dagger Western Bypass")).toBeInTheDocument();
     expect(screen.getByText("Selected Route Variant: Route Dagger Western Bypass")).toBeInTheDocument();
     expect(screen.getAllByText("480 gal")).not.toHaveLength(0);
+    expect(screen.getByText("Draft Transmission")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hauler 8, Backstop. Approved Route Dagger Western Bypass. Load 480 gal JP-8 for Raven; depart 2026-05-17T04:00:00Z."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("oa-draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "fixture://outbound-audio/oa-draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8.wav"
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve COA" })).not.toBeInTheDocument();
   });
 
@@ -1011,6 +1065,15 @@ describe("App", () => {
     expect(screen.getByText("evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area")).toBeInTheDocument();
     expect(screen.getByText("inventory:nomad:JP-8")).toBeInTheDocument();
     expect(screen.getByText("coa-route-dagger-western-bypass-nomad-jp8-resupply")).toBeInTheDocument();
+    expect(screen.getByText("Outbound Audio")).toBeInTheDocument();
+    expect(
+      screen.getByText("oa-resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "fixture://outbound-audio/oa-resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact.wav"
+      )
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Accept Denied Area" })).not.toBeInTheDocument();
     expect(screen.queryByText("Selected Route Variant: Route Dagger Western Bypass")).not.toBeInTheDocument();
   });

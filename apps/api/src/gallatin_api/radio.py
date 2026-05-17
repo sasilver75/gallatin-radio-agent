@@ -19,6 +19,7 @@ from gallatin_api.event_ledger import (
     EventEvidence,
     SupplySignal,
 )
+from gallatin_api.outbound_audio import OutboundAudio, deterministic_outbound_audio
 from gallatin_api.scenario import InventoryItem, LogisticsPictureScenario
 
 
@@ -105,6 +106,7 @@ class QuarterbackAddressedResponse(BaseModel):
     agent_callsign: str
     summary: str
     radio_brevity: str
+    outbound_audio: OutboundAudio
     grounding: list[ResponseGrounding]
 
 
@@ -505,19 +507,28 @@ def addressed_response_for_intent(
     relevant_events = relevant_rollup_events(picture)
     grounding = response_grounding(picture, pending_interpretations)
     coa_sentence = f"Review {coa.name}." if coa is not None else "No Executable COA is generated."
+    response_id = f"resp-{transmission.transmission_id}-{slugify(interpretation.intent_type)}"
+    radio_brevity = (
+        f"{picture.logistics_watch_officer}, {picture.agent_callsign}. Last thirty: "
+        f"{route_dagger_status_phrase(picture)}; {nomad_jp8_status_phrase(nomad_jp8)}. "
+        f"{coa_sentence}"
+    )
 
     return QuarterbackAddressedResponse(
-        response_id=f"resp-{transmission.transmission_id}-{slugify(interpretation.intent_type)}",
+        response_id=response_id,
         agent_callsign=picture.agent_callsign,
         summary=(
             f"{picture.agent_callsign} rollup grounded in {len(relevant_events)} "
             f"Event Ledger entries, {len(pending_interpretations)} pending Proposed "
             f"Interpretations, and {len(picture.executable_coas)} generated Executable COA."
         ),
-        radio_brevity=(
-            f"{picture.logistics_watch_officer}, {picture.agent_callsign}. Last thirty: "
-            f"{route_dagger_status_phrase(picture)}; {nomad_jp8_status_phrase(nomad_jp8)}. "
-            f"{coa_sentence}"
+        radio_brevity=radio_brevity,
+        outbound_audio=deterministic_outbound_audio(
+            source_kind="addressed_response",
+            source_id=response_id,
+            transcript=radio_brevity,
+            generated_at=transmission.recorded_at,
+            duration_seconds=12.0,
         ),
         grounding=grounding,
     )
