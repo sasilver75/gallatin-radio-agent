@@ -51,6 +51,10 @@ def test_accepted_position_update_persists_and_projects_logistics_picture(
     assert accepted_event["source_callsign"] == "Mule 2"
     assert accepted_event["evidence"][0]["reference"] == "LOGNET-1 transmission 004"
 
+    duplicate_response = client.post("/events/accepted", json=accepted_event)
+
+    assert duplicate_response.status_code == 201
+
     ledger_response = client.get("/events/accepted")
 
     assert ledger_response.status_code == 200

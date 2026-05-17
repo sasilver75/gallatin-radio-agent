@@ -129,6 +129,14 @@ export type TranscriptionMetadata = {
   fixture_id: string;
 };
 
+export type RadioInterpretation = {
+  interpretation_id: string;
+  kind: "auto_accepted";
+  domain_event_id: string;
+  summary: string;
+  extracted_callsigns: string[];
+};
+
 export type RadioTransmission = {
   transmission_id: string;
   clip_id: string;
@@ -138,6 +146,7 @@ export type RadioTransmission = {
   audio: AudioMetadata;
   transcript: string;
   transcription: TranscriptionMetadata;
+  interpretations: RadioInterpretation[];
 };
 
 export type LogisticsPictureScenario = {

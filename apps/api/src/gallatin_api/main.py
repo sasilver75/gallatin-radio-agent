@@ -16,6 +16,7 @@ from gallatin_api.radio import (
     RadioTransmission,
     RadioTransmissionRequest,
     TranscriptionPipeline,
+    interpret_radio_transmission,
 )
 from gallatin_api.scenario import (
     LogisticsPictureScenario,
@@ -105,9 +106,15 @@ def create_app(
         request: RadioTransmissionRequest,
     ) -> RadioTransmission:
         try:
-            return radio_transcription.transcribe_prerecorded_clip(request.clip_id)
+            transmission = radio_transcription.transcribe_prerecorded_clip(request.clip_id)
         except PrerecordedRadioClipNotFound as exc:
             raise HTTPException(status_code=404, detail="Prerecorded Radio Clip not found") from exc
+
+        interpreted = interpret_radio_transmission(transmission)
+        for event in interpreted.accepted_events:
+            ledger_store.append(event)
+
+        return transmission.model_copy(update={"interpretations": interpreted.interpretations})
 
     return app
 

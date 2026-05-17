@@ -161,7 +161,45 @@ const radioTransmissionResponse: RadioTransmission = {
   transcription: {
     pipeline: "Fixture Transcription Pipeline",
     fixture_id: "mule-2-checkpoint-slate-transcript"
-  }
+  },
+  interpretations: [
+    {
+      interpretation_id: "interp-rt-lognet-1-mule-2-checkpoint-slate-position-update",
+      kind: "auto_accepted",
+      domain_event_id: "evt-rt-lognet-1-mule-2-checkpoint-slate-position-update",
+      summary: "Mule 2 reports passing Checkpoint Slate.",
+      extracted_callsigns: ["Hammer 4", "Mule 2"]
+    }
+  ]
+};
+
+const scenarioAfterRadioTransmissionResponse: LogisticsPictureScenario = {
+  ...scenarioResponse,
+  projection: {
+    source: "Event Ledger",
+    accepted_event_count: 1
+  },
+  event_ledger: [
+    {
+      event_id: "evt-rt-lognet-1-mule-2-checkpoint-slate-position-update",
+      event_type: "position_update",
+      subject_id: "mule-2",
+      source_callsign: "Mule 2",
+      occurred_at: "2026-05-17T03:12:00Z",
+      accepted_at: "2026-05-17T03:12:00Z",
+      summary: "Mule 2 reports passing Checkpoint Slate.",
+      evidence: [
+        {
+          kind: "radio_transmission",
+          reference: "rt-lognet-1-mule-2-checkpoint-slate"
+        }
+      ],
+      position: {
+        latitude: 22.812,
+        longitude: 120.318
+      }
+    }
+  ]
 };
 
 describe("App", () => {
@@ -309,6 +347,36 @@ describe("App", () => {
     expect(screen.getByText("lognet-1-mule-2-checkpoint-slate.wav")).toBeInTheDocument();
     expect(screen.getByText("Fixture Transcription Pipeline")).toBeInTheDocument();
   });
+
+  it("refreshes the Logistics Picture and shows the auto-accepted radio interpretation", async () => {
+    mockApiFetch({ scenarioAfterTransmission: scenarioAfterRadioTransmissionResponse });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Mule 2 Checkpoint Slate Position Update")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Transmit to LOGNET-1" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Auto-accepted Position Update")).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText("Mule 2 reports passing Checkpoint Slate.")).not.toHaveLength(0);
+
+    await waitFor(() => {
+      expect(screen.getByText("Event Ledger projection: 1 accepted event.")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("rt-lognet-1-mule-2-checkpoint-slate")).toBeInTheDocument();
+
+    const scenarioFetches = vi.mocked(globalThis.fetch).mock.calls.filter(([input]) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      return url === "http://localhost:8000/scenarios/kaohsiung-tainan/logistics-picture";
+    });
+    expect(scenarioFetches).toHaveLength(2);
+  });
 });
 
 function mockApiFetch({
@@ -316,6 +384,7 @@ function mockApiFetch({
   readinessStatus = 200,
   scenario = scenarioResponse,
   scenarioStatus = 200,
+  scenarioAfterTransmission,
   prerecordedClips = prerecordedClipsResponse,
   transmission = radioTransmissionResponse
 }: {
@@ -323,9 +392,12 @@ function mockApiFetch({
   readinessStatus?: number;
   scenario?: LogisticsPictureScenario;
   scenarioStatus?: number;
+  scenarioAfterTransmission?: LogisticsPictureScenario;
   prerecordedClips?: PrerecordedRadioClip[];
   transmission?: RadioTransmission;
 } = {}) {
+  let transmissionAccepted = false;
+
   vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
@@ -334,6 +406,10 @@ function mockApiFetch({
     }
 
     if (url === "http://localhost:8000/scenarios/kaohsiung-tainan/logistics-picture") {
+      if (transmissionAccepted && scenarioAfterTransmission) {
+        return Promise.resolve(jsonResponse(scenarioAfterTransmission, scenarioStatus));
+      }
+
       return Promise.resolve(jsonResponse(scenario, scenarioStatus));
     }
 
@@ -342,6 +418,7 @@ function mockApiFetch({
     }
 
     if (url === "http://localhost:8000/radio/transmissions") {
+      transmissionAccepted = true;
       return Promise.resolve(jsonResponse(transmission, 201));
     }
 

@@ -92,6 +92,16 @@
       "description": "Planned handoff point for forward distribution."
     },
     {
+      "id": "checkpoint-slate",
+      "name": "Checkpoint Slate",
+      "role": "Route Checkpoint",
+      "coordinate": {
+        "latitude": 22.812,
+        "longitude": 120.318
+      },
+      "description": "Route checkpoint reported by Mule 2 during LOGNET-1 movement."
+    },
+    {
       "id": "mule-2-current",
       "name": "Mule 2 Current Position",
       "role": "Supply Convoy Position",

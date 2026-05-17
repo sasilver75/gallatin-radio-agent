@@ -40,6 +40,10 @@ class InMemoryEventLedgerStore:
         self.events = events or []
 
     def append(self, event: AcceptedDomainEvent) -> AcceptedDomainEvent:
+        for existing_event in self.events:
+            if existing_event.event_id == event.event_id:
+                return existing_event
+
         self.events.append(event)
         return event
 
@@ -68,6 +72,7 @@ class PostgresEventLedgerStore:
                     payload
                 )
                 values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                on conflict (event_id) do nothing
                 """,
                 (
                     event.event_id,
