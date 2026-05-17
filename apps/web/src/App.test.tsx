@@ -560,6 +560,79 @@ const scenarioAfterCoaRejectionResponse: LogisticsPictureScenario = {
   event_ledger: [...scenarioWithExecutableCoaResponse.event_ledger, rejectedCoaDecisionEvent]
 };
 
+const addressedIntentClipResponse: PrerecordedRadioClip = {
+  clip_id: "lognet-1-hammer-4-quarterback-last-thirty",
+  title: "Hammer 4 Quarterback Last Thirty Request",
+  radio_channel: "LOGNET-1",
+  source_callsign: "Hammer 4",
+  recorded_at: "2026-05-17T03:26:00Z",
+  audio: {
+    filename: "lognet-1-hammer-4-quarterback-last-thirty.wav",
+    content_type: "audio/wav",
+    duration_seconds: 5.8,
+    fixture_uri: "fixture://tactical-radio/lognet-1-hammer-4-quarterback-last-thirty.wav"
+  }
+};
+
+const addressedIntentTransmissionResponse: RadioTransmission = {
+  transmission_id: "rt-lognet-1-hammer-4-quarterback-last-thirty",
+  clip_id: "lognet-1-hammer-4-quarterback-last-thirty",
+  radio_channel: "LOGNET-1",
+  source_callsign: "Hammer 4",
+  recorded_at: "2026-05-17T03:26:00Z",
+  audio: addressedIntentClipResponse.audio,
+  transcript: "Quarterback, Hammer 4. Give me the last thirty and impact to tonight's resupply.",
+  transcription: {
+    pipeline: "Fixture Transcription Pipeline",
+    fixture_id: "hammer-4-quarterback-last-thirty-transcript"
+  },
+  interpretations: [
+    {
+      interpretation_id: "interp-rt-lognet-1-hammer-4-quarterback-last-thirty",
+      kind: "addressed_intent",
+      intent_type: "last_thirty_resupply_impact",
+      addressed_to: "Quarterback",
+      summary: "Hammer 4 asks Quarterback for the last thirty and resupply impact.",
+      extracted_callsigns: ["Hammer 4"],
+      response: {
+        response_id: "resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact",
+        agent_callsign: "Backstop",
+        summary:
+          "Backstop rollup grounded in 2 Event Ledger entries, 0 pending Proposed Interpretations, and 1 generated Executable COA.",
+        radio_brevity:
+          "Anvil 3, Backstop. Last thirty: Route Dagger denied near Checkpoint Slate; Nomad JP-8 red, 0.9 DOS, black at 2026-05-18T00:24:00Z. Review Route Dagger Western Bypass / Nomad JP-8 Resupply.",
+        grounding: [
+          {
+            kind: "event_ledger",
+            reference: "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area",
+            label: "Denied Area created for possible IED indicators near Checkpoint Slate."
+          },
+          {
+            kind: "event_ledger",
+            reference: "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+            label: "Nomad 6 reports JP-8 burn rate at 3.2x baseline."
+          },
+          {
+            kind: "logistics_picture",
+            reference: "inventory:nomad:JP-8",
+            label: "Nomad JP-8 red / 0.9 DOS / projected black 2026-05-18T00:24:00Z."
+          },
+          {
+            kind: "proposed_interpretations",
+            reference: "pending:0",
+            label: "0 pending Review-Required Interpretations."
+          },
+          {
+            kind: "executable_coa",
+            reference: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+            label: "Route Dagger Western Bypass / Nomad JP-8 Resupply."
+          }
+        ]
+      }
+    }
+  ]
+};
+
 describe("App", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -902,6 +975,44 @@ describe("App", () => {
     expect(screen.getByText("Proposed Movement Status: Test LSA Raven to Test LRP Cobalt")).toBeInTheDocument();
     expect(screen.queryByText("Selected Route Variant: Route Dagger Western Bypass")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reject COA" })).not.toBeInTheDocument();
+  });
+
+  it("renders addressed Quarterback rollups with grounded response citations", async () => {
+    mockApiFetch({
+      scenario: scenarioWithExecutableCoaResponse,
+      scenarioAfterTransmission: scenarioWithExecutableCoaResponse,
+      prerecordedClips: [addressedIntentClipResponse],
+      transmission: addressedIntentTransmissionResponse
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Hammer 4 Quarterback Last Thirty Request")).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Transmit Hammer 4 Quarterback Last Thirty Request to LOGNET-1"
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Quarterback Rollup")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(addressedIntentTransmissionResponse.transcript)).toBeInTheDocument();
+    expect(screen.getByText("Hammer 4 asks Quarterback for the last thirty and resupply impact.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Anvil 3, Backstop. Last thirty: Route Dagger denied near Checkpoint Slate; Nomad JP-8 red, 0.9 DOS, black at 2026-05-18T00:24:00Z. Review Route Dagger Western Bypass / Nomad JP-8 Resupply."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText("evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area")).toBeInTheDocument();
+    expect(screen.getByText("inventory:nomad:JP-8")).toBeInTheDocument();
+    expect(screen.getByText("coa-route-dagger-western-bypass-nomad-jp8-resupply")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Accept Denied Area" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Selected Route Variant: Route Dagger Western Bypass")).not.toBeInTheDocument();
   });
 });
 

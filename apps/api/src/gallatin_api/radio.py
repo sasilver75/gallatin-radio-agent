@@ -19,6 +19,7 @@ from gallatin_api.event_ledger import (
     EventEvidence,
     SupplySignal,
 )
+from gallatin_api.scenario import InventoryItem, LogisticsPictureScenario
 
 
 class AudioMetadata(BaseModel):
@@ -88,8 +89,39 @@ class ReviewRequiredRadioInterpretation(BaseModel):
     proposed_hazard: ProposedHazardMeaning
 
 
+class ResponseGrounding(BaseModel):
+    kind: Literal[
+        "event_ledger",
+        "logistics_picture",
+        "proposed_interpretations",
+        "executable_coa",
+    ]
+    reference: str
+    label: str
+
+
+class QuarterbackAddressedResponse(BaseModel):
+    response_id: str
+    agent_callsign: str
+    summary: str
+    radio_brevity: str
+    grounding: list[ResponseGrounding]
+
+
+class AddressedIntentRadioInterpretation(BaseModel):
+    interpretation_id: str
+    kind: Literal["addressed_intent"]
+    intent_type: Literal["last_thirty_resupply_impact"]
+    addressed_to: str
+    summary: str
+    extracted_callsigns: list[str]
+    response: QuarterbackAddressedResponse | None = None
+
+
 RadioInterpretation: TypeAlias = Annotated[
-    AutoAcceptedRadioInterpretation | ReviewRequiredRadioInterpretation,
+    AutoAcceptedRadioInterpretation
+    | ReviewRequiredRadioInterpretation
+    | AddressedIntentRadioInterpretation,
     Field(discriminator="kind"),
 ]
 
@@ -122,6 +154,8 @@ class ProposedInterpretationStore(Protocol):
         self,
         interpretation: ReviewRequiredRadioInterpretation,
     ) -> ReviewRequiredRadioInterpretation: ...
+
+    def list_interpretations(self) -> list[ReviewRequiredRadioInterpretation]: ...
 
     def get(self, interpretation_id: str) -> ReviewRequiredRadioInterpretation: ...
 
@@ -162,6 +196,9 @@ class InMemoryProposedInterpretationStore:
 
         self.interpretations[interpretation.interpretation_id] = interpretation
         return interpretation
+
+    def list_interpretations(self) -> list[ReviewRequiredRadioInterpretation]:
+        return list(self.interpretations.values())
 
     def get(self, interpretation_id: str) -> ReviewRequiredRadioInterpretation:
         interpretation = self.interpretations.get(interpretation_id)
@@ -220,6 +257,22 @@ class PostgresProposedInterpretationStore:
                 ),
             )
         return interpretation
+
+    def list_interpretations(self) -> list[ReviewRequiredRadioInterpretation]:
+        self.ensure_schema()
+        with psycopg.connect(self.database_url, row_factory=dict_row) as connection:
+            rows = connection.execute(
+                """
+                select payload
+                from proposed_interpretations
+                order by created_at asc, interpretation_id asc
+                """
+            ).fetchall()
+
+        return [
+            ReviewRequiredRadioInterpretation.model_validate(row["payload"])
+            for row in rows
+        ]
 
     def get(self, interpretation_id: str) -> ReviewRequiredRadioInterpretation:
         interpretation = self.find(interpretation_id)
@@ -396,7 +449,157 @@ def interpret_radio_transmission(transmission: RadioTransmission) -> RadioInterp
         )
         return RadioInterpretationResult(interpretations=[interpretation], accepted_events=[event])
 
+    if transmission.clip_id == "lognet-1-hammer-4-quarterback-last-thirty":
+        interpretation = AddressedIntentRadioInterpretation(
+            interpretation_id="interp-rt-lognet-1-hammer-4-quarterback-last-thirty",
+            kind="addressed_intent",
+            intent_type="last_thirty_resupply_impact",
+            addressed_to="Quarterback",
+            summary="Hammer 4 asks Quarterback for the last thirty and resupply impact.",
+            extracted_callsigns=extract_callsigns(transmission.transcript),
+        )
+        return RadioInterpretationResult(interpretations=[interpretation], accepted_events=[])
+
     return RadioInterpretationResult(interpretations=[], accepted_events=[])
+
+
+def answer_addressed_intents(
+    transmission: RadioTransmission,
+    picture: LogisticsPictureScenario,
+    proposed_interpretations: list[ReviewRequiredRadioInterpretation],
+) -> RadioTransmission:
+    return transmission.model_copy(
+        update={
+            "interpretations": [
+                interpretation.model_copy(
+                    update={
+                        "response": addressed_response_for_intent(
+                            transmission,
+                            interpretation,
+                            picture,
+                            proposed_interpretations,
+                        )
+                    }
+                )
+                if isinstance(interpretation, AddressedIntentRadioInterpretation)
+                else interpretation
+                for interpretation in transmission.interpretations
+            ]
+        }
+    )
+
+
+def addressed_response_for_intent(
+    transmission: RadioTransmission,
+    interpretation: AddressedIntentRadioInterpretation,
+    picture: LogisticsPictureScenario,
+    proposed_interpretations: list[ReviewRequiredRadioInterpretation],
+) -> QuarterbackAddressedResponse:
+    pending_interpretations = [
+        proposed
+        for proposed in proposed_interpretations
+        if proposed.status == "pending"
+    ]
+    nomad_jp8 = nomad_jp8_inventory(picture)
+    coa = picture.executable_coas[0] if picture.executable_coas else None
+    relevant_events = relevant_rollup_events(picture)
+    grounding = response_grounding(picture, pending_interpretations)
+    coa_sentence = f"Review {coa.name}." if coa is not None else "No Executable COA is generated."
+
+    return QuarterbackAddressedResponse(
+        response_id=f"resp-{transmission.transmission_id}-{slugify(interpretation.intent_type)}",
+        agent_callsign=picture.agent_callsign,
+        summary=(
+            f"{picture.agent_callsign} rollup grounded in {len(relevant_events)} "
+            f"Event Ledger entries, {len(pending_interpretations)} pending Proposed "
+            f"Interpretations, and {len(picture.executable_coas)} generated Executable COA."
+        ),
+        radio_brevity=(
+            f"{picture.logistics_watch_officer}, {picture.agent_callsign}. Last thirty: "
+            f"{route_dagger_status_phrase(picture)}; {nomad_jp8_status_phrase(nomad_jp8)}. "
+            f"{coa_sentence}"
+        ),
+        grounding=grounding,
+    )
+
+
+def response_grounding(
+    picture: LogisticsPictureScenario,
+    pending_interpretations: list[ReviewRequiredRadioInterpretation],
+) -> list[ResponseGrounding]:
+    grounding = [
+        ResponseGrounding(
+            kind="event_ledger",
+            reference=event.event_id,
+            label=event.summary,
+        )
+        for event in relevant_rollup_events(picture)
+    ]
+
+    nomad_jp8 = nomad_jp8_inventory(picture)
+    grounding.append(
+        ResponseGrounding(
+            kind="logistics_picture",
+            reference="inventory:nomad:JP-8",
+            label=nomad_jp8_grounding_label(nomad_jp8),
+        )
+    )
+    grounding.append(
+        ResponseGrounding(
+            kind="proposed_interpretations",
+            reference=f"pending:{len(pending_interpretations)}",
+            label=f"{len(pending_interpretations)} pending Review-Required Interpretations.",
+        )
+    )
+    grounding.extend(
+        ResponseGrounding(
+            kind="executable_coa",
+            reference=coa.coa_id,
+            label=f"{coa.name}.",
+        )
+        for coa in picture.executable_coas
+    )
+    return grounding
+
+
+def relevant_rollup_events(picture: LogisticsPictureScenario) -> list[AcceptedDomainEvent]:
+    return [
+        event
+        for event in picture.event_ledger
+        if event.event_type in ["denied_area_created", "supply_signal"]
+    ]
+
+
+def route_dagger_status_phrase(picture: LogisticsPictureScenario) -> str:
+    if picture.denied_areas:
+        return "Route Dagger denied near Checkpoint Slate"
+
+    return "no accepted Route Dagger Denied Area"
+
+
+def nomad_jp8_status_phrase(nomad_jp8: InventoryItem) -> str:
+    if nomad_jp8.projected_black_time is None:
+        return f"Nomad JP-8 {nomad_jp8.status}, {nomad_jp8.days_of_supply} DOS, no projected black time"
+
+    return (
+        f"Nomad JP-8 {nomad_jp8.status}, {nomad_jp8.days_of_supply} DOS, "
+        f"black at {nomad_jp8.projected_black_time}"
+    )
+
+
+def nomad_jp8_grounding_label(nomad_jp8: InventoryItem) -> str:
+    if nomad_jp8.projected_black_time is None:
+        return f"Nomad JP-8 {nomad_jp8.status} / {nomad_jp8.days_of_supply} DOS / no projected black time."
+
+    return (
+        f"Nomad JP-8 {nomad_jp8.status} / {nomad_jp8.days_of_supply} DOS / "
+        f"projected black {nomad_jp8.projected_black_time}."
+    )
+
+
+def nomad_jp8_inventory(picture: LogisticsPictureScenario) -> InventoryItem:
+    nomad = next(unit for unit in picture.supported_units if unit.id == "nomad")
+    return next(item for item in nomad.inventory if item.tracked_supply == "JP-8")
 
 
 def extract_callsigns(transcript: str) -> list[str]:

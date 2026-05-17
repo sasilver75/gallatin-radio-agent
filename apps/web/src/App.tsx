@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import {
+  AddressedIntentRadioInterpretation,
   Bounds,
   Coordinate,
   InventoryItem,
@@ -789,19 +790,54 @@ function EvidencePane({
                   <small>{interpretation.extracted_callsigns.join(", ")}</small>
                   <small>{interpretation.domain_event_id}</small>
                 </>
-              ) : (
+              ) : interpretation.kind === "review_required" ? (
                 <ReviewRequiredInterpretation
                   interpretation={interpretation}
                   reviewActionState={reviewActionState}
                   onAcceptInterpretation={onAcceptInterpretation}
                   onRejectInterpretation={onRejectInterpretation}
                 />
+              ) : (
+                <AddressedIntentInterpretation interpretation={interpretation} />
               )}
             </li>
           ))}
         </ul>
       ) : null}
     </div>
+  );
+}
+
+function AddressedIntentInterpretation({
+  interpretation
+}: {
+  interpretation: AddressedIntentRadioInterpretation;
+}) {
+  const { response } = interpretation;
+
+  return (
+    <>
+      <strong>Quarterback Rollup</strong>
+      <span>{interpretation.summary}</span>
+      <small>
+        {interpretation.addressed_to} / {interpretation.intent_type}
+      </small>
+      <small>{interpretation.extracted_callsigns.join(", ")}</small>
+      {response ? (
+        <div className="addressed-response">
+          <p>{response.radio_brevity}</p>
+          <small>{response.summary}</small>
+          <ul>
+            {response.grounding.map((grounding) => (
+              <li key={`${grounding.kind}-${grounding.reference}`}>
+                <strong>{grounding.reference}</strong>
+                <span>{grounding.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </>
   );
 }
 

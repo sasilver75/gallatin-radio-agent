@@ -747,6 +747,39 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.addressed-response {
+  background: #eef4f1;
+  border-left: 3px solid #294f8f;
+  display: grid;
+  gap: 5px;
+  margin-top: 5px;
+  padding: 7px 9px;
+}
+
+.addressed-response p {
+  color: #26342e;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.addressed-response ul {
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.addressed-response li {
+  display: grid;
+  gap: 2px;
+}
+
+.addressed-response strong {
+  color: #294f8f;
+  font-size: 0.76rem;
+}
+
 .interpretation-actions {
   display: flex;
   flex-wrap: wrap;

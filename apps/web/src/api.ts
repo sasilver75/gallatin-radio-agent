@@ -253,9 +253,34 @@ export type ReviewRequiredRadioInterpretation = {
   proposed_hazard: ProposedHazardMeaning;
 };
 
+export type ResponseGrounding = {
+  kind: "event_ledger" | "logistics_picture" | "proposed_interpretations" | "executable_coa";
+  reference: string;
+  label: string;
+};
+
+export type QuarterbackAddressedResponse = {
+  response_id: string;
+  agent_callsign: string;
+  summary: string;
+  radio_brevity: string;
+  grounding: ResponseGrounding[];
+};
+
+export type AddressedIntentRadioInterpretation = {
+  interpretation_id: string;
+  kind: "addressed_intent";
+  intent_type: "last_thirty_resupply_impact";
+  addressed_to: string;
+  summary: string;
+  extracted_callsigns: string[];
+  response: QuarterbackAddressedResponse | null;
+};
+
 export type RadioInterpretation =
   | AutoAcceptedRadioInterpretation
-  | ReviewRequiredRadioInterpretation;
+  | ReviewRequiredRadioInterpretation
+  | AddressedIntentRadioInterpretation;
 
 export type RadioTransmission = {
   transmission_id: string;
