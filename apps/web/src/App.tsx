@@ -119,6 +119,16 @@ function App() {
     transmitPrerecordedRadioClip(clipId)
       .then((transmission) => {
         setTransmissionState({ kind: "ready", transmission });
+        return fetchLogisticsPicture()
+          .then((picture) => {
+            setPictureState({ kind: "ready", picture });
+          })
+          .catch((error: unknown) => {
+            setPictureState({
+              kind: "error",
+              message: error instanceof Error ? error.message : "Unknown Logistics Picture error"
+            });
+          });
       })
       .catch((error: unknown) => {
         setTransmissionState({
@@ -504,6 +514,18 @@ function EvidencePane({
       <p className="transcript-text">{transmission.transcript}</p>
       <p className="panel-evidence">{transmission.audio.filename}</p>
       <p>{transmission.transcription.pipeline}</p>
+      {transmission.interpretations.length > 0 ? (
+        <ul className="interpretation-list">
+          {transmission.interpretations.map((interpretation) => (
+            <li key={interpretation.interpretation_id}>
+              <strong>Auto-accepted Position Update</strong>
+              <span>{interpretation.summary}</span>
+              <small>{interpretation.extracted_callsigns.join(", ")}</small>
+              <small>{interpretation.domain_event_id}</small>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

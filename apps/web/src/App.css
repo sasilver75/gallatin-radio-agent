@@ -513,6 +513,33 @@ h1 {
   font-weight: 700;
 }
 
+.interpretation-list {
+  display: grid;
+  gap: 7px;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+}
+
+.interpretation-list li {
+  border-top: 1px solid #e3e8e4;
+  display: grid;
+  gap: 2px;
+  padding-top: 8px;
+}
+
+.interpretation-list strong {
+  color: #1f5c28;
+  font-size: 0.82rem;
+}
+
+.interpretation-list span,
+.interpretation-list small {
+  color: #52605a;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1040px) {
   .workspace-grid {
     grid-template-columns: 1fr;
