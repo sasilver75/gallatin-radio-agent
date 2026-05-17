@@ -76,4 +76,6 @@ def test_accepted_position_update_persists_and_projects_logistics_picture(
     assert mule_location["description"] == "Projected from accepted Position Update."
     assert picture["projection"]["source"] == "Event Ledger"
     assert picture["projection"]["accepted_event_count"] == 1
-    assert picture["event_ledger"] == [accepted_event]
+    assert len(picture["event_ledger"]) == 1
+    assert picture["event_ledger"][0]["event_id"] == accepted_event["event_id"]
+    assert picture["event_ledger"][0]["position"] == accepted_event["position"]

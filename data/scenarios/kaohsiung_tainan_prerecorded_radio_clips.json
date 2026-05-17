@@ -15,5 +15,22 @@
       "fixture_id": "mule-2-checkpoint-slate-transcript",
       "transcript": "Hammer 4, Mule 2 passing Checkpoint Slate now. Convoy remains green, estimate LRP Bravo in 18 mikes."
     }
+  },
+  {
+    "clip_id": "lognet-1-nomad-6-route-dagger-hazard",
+    "title": "Nomad 6 Route Dagger Hazard Observation",
+    "radio_channel": "LOGNET-1",
+    "source_callsign": "Nomad 6",
+    "recorded_at": "2026-05-17T03:19:00Z",
+    "audio": {
+      "filename": "lognet-1-nomad-6-route-dagger-hazard.wav",
+      "content_type": "audio/wav",
+      "duration_seconds": 8.6,
+      "fixture_uri": "fixture://tactical-radio/lognet-1-nomad-6-route-dagger-hazard.wav"
+    },
+    "transcription_fixture": {
+      "fixture_id": "nomad-6-route-dagger-hazard-transcript",
+      "transcript": "Hammer 4, Nomad 6 reports possible IED indicators on Route Dagger near Checkpoint Slate. Recommend no traffic through that bend."
+    }
   }
 ]
