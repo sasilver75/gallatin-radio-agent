@@ -1,0 +1,260 @@
+{
+  "scenario_id": "kaohsiung-tainan-v1",
+  "name": "Kaohsiung-Tainan Logistics Picture",
+  "updated_at": "2026-05-17T02:00:00Z",
+  "radio_channel": "LOGNET-1",
+  "agent_callsign": "Quarterback",
+  "logistics_watch_officer": "Hammer 4",
+  "area_of_operations": {
+    "id": "kaohsiung-tainan-corridor",
+    "name": "Kaohsiung-Tainan Corridor AO",
+    "corridor": "Kaohsiung-Tainan Corridor",
+    "bounds": {
+      "west": 120.05,
+      "south": 22.48,
+      "east": 120.55,
+      "north": 23.1
+    },
+    "polygon": [
+      {
+        "latitude": 23.08,
+        "longitude": 120.2
+      },
+      {
+        "latitude": 22.98,
+        "longitude": 120.48
+      },
+      {
+        "latitude": 22.58,
+        "longitude": 120.43
+      },
+      {
+        "latitude": 22.52,
+        "longitude": 120.16
+      },
+      {
+        "latitude": 22.78,
+        "longitude": 120.08
+      }
+    ]
+  },
+  "friendly_callsigns": [
+    {
+      "callsign": "Hammer 4",
+      "role": "Logistics Watch Officer",
+      "entity_id": null
+    },
+    {
+      "callsign": "Quarterback",
+      "role": "Radio-to-Map Logistics Agent",
+      "entity_id": null
+    },
+    {
+      "callsign": "Mule 2",
+      "role": "Supply Convoy",
+      "entity_id": "mule-2"
+    },
+    {
+      "callsign": "Viper 6",
+      "role": "Supported Unit Speaker",
+      "entity_id": "viper"
+    },
+    {
+      "callsign": "Archer 6",
+      "role": "Supported Unit Speaker",
+      "entity_id": "archer"
+    },
+    {
+      "callsign": "Nomad 6",
+      "role": "Supported Unit Speaker",
+      "entity_id": "nomad"
+    }
+  ],
+  "locations": [
+    {
+      "id": "lsa-south-dock",
+      "name": "LSA South Dock",
+      "role": "Logistics Support Area",
+      "coordinate": {
+        "latitude": 22.596,
+        "longitude": 120.287
+      },
+      "description": "Primary supply origin for the v1 LOGPAC."
+    },
+    {
+      "id": "lrp-bravo",
+      "name": "LRP Bravo",
+      "role": "Logistics Release Point",
+      "coordinate": {
+        "latitude": 22.86,
+        "longitude": 120.245
+      },
+      "description": "Planned handoff point for forward distribution."
+    },
+    {
+      "id": "mule-2-current",
+      "name": "Mule 2 Current Position",
+      "role": "Supply Convoy Position",
+      "coordinate": {
+        "latitude": 22.736,
+        "longitude": 120.286
+      },
+      "description": "Mule 2 staged north of the LSA pending release."
+    },
+    {
+      "id": "viper-assembly",
+      "name": "Viper Assembly Area",
+      "role": "Supported Unit Position",
+      "coordinate": {
+        "latitude": 22.956,
+        "longitude": 120.228
+      },
+      "description": "Viper company position with Class III risk."
+    },
+    {
+      "id": "archer-position",
+      "name": "Archer Firing Position",
+      "role": "Supported Unit Position",
+      "coordinate": {
+        "latitude": 22.878,
+        "longitude": 120.39
+      },
+      "description": "Archer battery position with Class V risk."
+    },
+    {
+      "id": "nomad-screen",
+      "name": "Nomad Screen Line",
+      "role": "Supported Unit Position",
+      "coordinate": {
+        "latitude": 22.746,
+        "longitude": 120.338
+      },
+      "description": "Nomad company screen line with Class I demand."
+    }
+  ],
+  "supported_units": [
+    {
+      "id": "viper",
+      "callsign": "Viper",
+      "radio_callsign": "Viper 6",
+      "display_name": "Viper Company",
+      "echelon": "Company",
+      "location_id": "viper-assembly",
+      "mission": "Northern screen and route security",
+      "inventory": [
+        {
+          "tracked_supply": "JP-8",
+          "class_of_supply": "Class III",
+          "quantity": 280,
+          "unit": "gal",
+          "status": "red",
+          "days_of_supply": 0.6,
+          "projected_black_time": "2026-05-17T06:30:00Z"
+        },
+        {
+          "tracked_supply": "Water",
+          "class_of_supply": "Class I",
+          "quantity": 480,
+          "unit": "L",
+          "status": "amber",
+          "days_of_supply": 1.4,
+          "projected_black_time": "2026-05-18T12:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "archer",
+      "callsign": "Archer",
+      "radio_callsign": "Archer 6",
+      "display_name": "Archer Battery",
+      "echelon": "Battery",
+      "location_id": "archer-position",
+      "mission": "Fires support from eastern corridor",
+      "inventory": [
+        {
+          "tracked_supply": "155mm HE",
+          "class_of_supply": "Class V",
+          "quantity": 38,
+          "unit": "rd",
+          "status": "red",
+          "days_of_supply": 0.5,
+          "projected_black_time": "2026-05-17T05:15:00Z"
+        },
+        {
+          "tracked_supply": "JP-8",
+          "class_of_supply": "Class III",
+          "quantity": 210,
+          "unit": "gal",
+          "status": "amber",
+          "days_of_supply": 1.1,
+          "projected_black_time": "2026-05-18T01:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "nomad",
+      "callsign": "Nomad",
+      "radio_callsign": "Nomad 6",
+      "display_name": "Nomad Company",
+      "echelon": "Company",
+      "location_id": "nomad-screen",
+      "mission": "Southern screen and observation",
+      "inventory": [
+        {
+          "tracked_supply": "Meals",
+          "class_of_supply": "Class I",
+          "quantity": 260,
+          "unit": "ea",
+          "status": "amber",
+          "days_of_supply": 1.2,
+          "projected_black_time": "2026-05-18T08:00:00Z"
+        },
+        {
+          "tracked_supply": "JP-8",
+          "class_of_supply": "Class III",
+          "quantity": 510,
+          "unit": "gal",
+          "status": "green",
+          "days_of_supply": 2.8,
+          "projected_black_time": null
+        }
+      ]
+    }
+  ],
+  "supply_convoy": {
+    "id": "mule-2",
+    "callsign": "Mule 2",
+    "display_name": "Mule 2 LOGPAC",
+    "location_id": "mule-2-current",
+    "movement_status": "Proposed Movement Status",
+    "route_summary": "LSA South Dock to LRP Bravo",
+    "route_location_ids": [
+      "lsa-south-dock",
+      "mule-2-current",
+      "lrp-bravo"
+    ],
+    "supply_load": [
+      {
+        "tracked_supply": "JP-8",
+        "class_of_supply": "Class III",
+        "quantity": 1200,
+        "unit": "gal",
+        "destination_unit_id": "viper"
+      },
+      {
+        "tracked_supply": "155mm HE",
+        "class_of_supply": "Class V",
+        "quantity": 96,
+        "unit": "rd",
+        "destination_unit_id": "archer"
+      },
+      {
+        "tracked_supply": "Meals",
+        "class_of_supply": "Class I",
+        "quantity": 800,
+        "unit": "ea",
+        "destination_unit_id": "nomad"
+      }
+    ]
+  }
+}
