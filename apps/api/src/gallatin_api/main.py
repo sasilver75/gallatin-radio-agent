@@ -1,11 +1,16 @@
 from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
+from typing import Literal
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from gallatin_api.event_ledger import (
     AcceptedDomainEvent,
+    CoaDecision,
     EventLedgerStore,
+    EventEvidence,
     PostgresEventLedgerStore,
 )
 from gallatin_api.readiness import DependencyStatus, ReadinessResponse, check_postgis
@@ -24,6 +29,7 @@ from gallatin_api.radio import (
     interpret_radio_transmission,
 )
 from gallatin_api.scenario import (
+    ExecutableCourseOfAction,
     LogisticsPictureScenario,
     load_kaohsiung_tainan_logistics_picture,
     project_logistics_picture,
@@ -107,6 +113,28 @@ def create_app(
     def accepted_events() -> list[AcceptedDomainEvent]:
         return ledger_store.list_events()
 
+    @app.post(
+        "/coas/{coa_id}/approve",
+        response_model=AcceptedDomainEvent,
+        response_model_exclude_none=True,
+        status_code=201,
+    )
+    def approve_executable_coa(coa_id: str) -> AcceptedDomainEvent:
+        picture = project_logistics_picture(provide_scenario(), ledger_store.list_events())
+        event = coa_decision_event(picture, coa_id, "approved")
+        return ledger_store.append(event)
+
+    @app.post(
+        "/coas/{coa_id}/reject",
+        response_model=AcceptedDomainEvent,
+        response_model_exclude_none=True,
+        status_code=201,
+    )
+    def reject_executable_coa(coa_id: str) -> AcceptedDomainEvent:
+        picture = project_logistics_picture(provide_scenario(), ledger_store.list_events())
+        event = coa_decision_event(picture, coa_id, "rejected")
+        return ledger_store.append(event)
+
     @app.get("/radio/prerecorded-clips", response_model=list[PublicPrerecordedRadioClip])
     def prerecorded_radio_clips() -> list[PublicPrerecordedRadioClip]:
         return radio_transcription.list_prerecorded_clips()
@@ -186,6 +214,94 @@ def create_app(
             ) from exc
 
     return app
+
+
+def coa_decision_event(
+    picture: LogisticsPictureScenario,
+    coa_id: str,
+    decision: Literal["approved", "rejected"],
+) -> AcceptedDomainEvent:
+    coa = executable_coa_for_decision(picture, coa_id, decision)
+    existing_decision_event = existing_coa_decision_event(picture, coa)
+    if existing_decision_event is not None:
+        return existing_decision_event
+
+    movement = coa.movements[0] if coa.movements else None
+    event_time = coa_decision_time(picture)
+    decision_noun = "approval" if decision == "approved" else "rejection"
+    selected_route_variant_id = movement.route_variant_id if decision == "approved" and movement else None
+    selected_route_name = movement.route_name if decision == "approved" and movement else None
+    movement_id = movement.movement_id if decision == "approved" and movement else None
+
+    return AcceptedDomainEvent(
+        event_id=f"evt-{coa_id}-{decision_noun}",
+        event_type="coa_decision",
+        subject_id=coa_id,
+        source_callsign=picture.logistics_watch_officer,
+        occurred_at=event_time,
+        accepted_at=event_time,
+        summary=f"{picture.logistics_watch_officer} {decision} {coa.name}.",
+        evidence=[
+            EventEvidence(
+                kind="executable_coa",
+                reference=coa_id,
+            )
+        ],
+        coa_decision=CoaDecision(
+            coa_id=coa_id,
+            decision=decision,
+            decided_by=picture.logistics_watch_officer,
+            movement_id=movement_id,
+            selected_route_variant_id=selected_route_variant_id,
+            selected_route_name=selected_route_name,
+        ),
+    )
+
+
+def existing_coa_decision_event(
+    picture: LogisticsPictureScenario,
+    coa: ExecutableCourseOfAction,
+) -> AcceptedDomainEvent | None:
+    if coa.decision_event_id is None:
+        return None
+
+    return next(
+        (
+            event
+            for event in picture.event_ledger
+            if event.event_id == coa.decision_event_id and event.event_type == "coa_decision"
+        ),
+        None,
+    )
+
+
+def executable_coa_for_decision(
+    picture: LogisticsPictureScenario,
+    coa_id: str,
+    decision: Literal["approved", "rejected"],
+) -> ExecutableCourseOfAction:
+    coa = next((candidate for candidate in picture.executable_coas if candidate.coa_id == coa_id), None)
+    if coa is None:
+        raise HTTPException(status_code=404, detail="Executable COA not found")
+
+    if coa.decision_status != "proposed" and coa.decision_status != decision:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Executable COA is already {coa.decision_status}",
+        )
+
+    if decision == "approved" and not coa.movements:
+        raise HTTPException(status_code=409, detail="Executable COA has no Movement to approve")
+
+    return coa
+
+
+def coa_decision_time(picture: LogisticsPictureScenario) -> datetime:
+    if not picture.event_ledger:
+        return datetime(2026, 5, 17, 3, 25, tzinfo=timezone.utc)
+
+    latest_accepted_at = max(event.accepted_at for event in picture.event_ledger)
+    return latest_accepted_at.astimezone(timezone.utc) + timedelta(minutes=1)
 
 
 app = create_app()

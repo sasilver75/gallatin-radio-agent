@@ -12,9 +12,11 @@ import {
   ReviewRequiredRadioInterpretation,
   SupplyStatus,
   acceptProposedInterpretation,
+  approveExecutableCoa,
   fetchLogisticsPicture,
   fetchPrerecordedRadioClips,
   fetchReadiness,
+  rejectExecutableCoa,
   rejectProposedInterpretation,
   transmitPrerecordedRadioClip
 } from "./api";
@@ -50,6 +52,14 @@ type ReviewActionState =
     }
   | { kind: "error"; message: string };
 
+type CoaActionState =
+  | { kind: "idle" }
+  | {
+      kind: "working";
+      coaId: string;
+    }
+  | { kind: "error"; message: string };
+
 type MapEntity = {
   id: string;
   label: string;
@@ -79,6 +89,9 @@ function App() {
     kind: "idle"
   });
   const [reviewActionState, setReviewActionState] = useState<ReviewActionState>({
+    kind: "idle"
+  });
+  const [coaActionState, setCoaActionState] = useState<CoaActionState>({
     kind: "idle"
   });
 
@@ -234,6 +247,46 @@ function App() {
     });
   }
 
+  function approveGeneratedCoa(coaId: string) {
+    setCoaActionState({
+      kind: "working",
+      coaId
+    });
+
+    approveExecutableCoa(coaId)
+      .then(() => fetchLogisticsPicture())
+      .then((picture) => {
+        setPictureState({ kind: "ready", picture });
+        setCoaActionState({ kind: "idle" });
+      })
+      .catch((error: unknown) => {
+        setCoaActionState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown COA Approval error"
+        });
+      });
+  }
+
+  function rejectGeneratedCoa(coaId: string) {
+    setCoaActionState({
+      kind: "working",
+      coaId
+    });
+
+    rejectExecutableCoa(coaId)
+      .then(() => fetchLogisticsPicture())
+      .then((picture) => {
+        setPictureState({ kind: "ready", picture });
+        setCoaActionState({ kind: "idle" });
+      })
+      .catch((error: unknown) => {
+        setCoaActionState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown COA Rejection error"
+        });
+      });
+  }
+
   useEffect(() => {
     let active = true;
 
@@ -280,7 +333,10 @@ function App() {
         clipsState={clipsState}
         transmissionState={transmissionState}
         reviewActionState={reviewActionState}
+        coaActionState={coaActionState}
         onAcceptInterpretation={acceptReviewRequiredInterpretation}
+        onApproveCoa={approveGeneratedCoa}
+        onRejectCoa={rejectGeneratedCoa}
         onRejectInterpretation={rejectReviewRequiredInterpretation}
         onTransmitClip={transmitClip}
       />
@@ -477,6 +533,9 @@ function ScenarioStatusDetails({ pictureState }: { pictureState: PictureLoadStat
         <p className="route-summary">
           {convoy.movement_status}: {convoy.route_summary}
         </p>
+        {convoy.selected_route_name ? (
+          <p className="route-summary">Selected Route Variant: {convoy.selected_route_name}</p>
+        ) : null}
         <ul className="load-list">
           {convoy.supply_load.map((item) => (
             <li key={`${item.destination_unit_id}-${item.tracked_supply}`}>
@@ -545,7 +604,10 @@ function WorkspacePanels({
   clipsState,
   transmissionState,
   reviewActionState,
+  coaActionState,
   onAcceptInterpretation,
+  onApproveCoa,
+  onRejectCoa,
   onRejectInterpretation,
   onTransmitClip
 }: {
@@ -553,7 +615,10 @@ function WorkspacePanels({
   clipsState: PrerecordedClipsLoadState;
   transmissionState: TransmissionLoadState;
   reviewActionState: ReviewActionState;
+  coaActionState: CoaActionState;
   onAcceptInterpretation: (interpretationId: string) => void;
+  onApproveCoa: (coaId: string) => void;
+  onRejectCoa: (coaId: string) => void;
   onRejectInterpretation: (interpretationId: string) => void;
   onTransmitClip: (clipId: string) => void;
 }) {
@@ -603,12 +668,15 @@ function WorkspacePanels({
       },
       {
         title: "COA Review",
-        body: coaReviewPanelBody(picture)
+        body: coaReviewPanelBody(picture, coaActionState, onApproveCoa, onRejectCoa)
       }
     ] satisfies WorkspacePanel[];
   }, [
+    coaActionState,
     clipsState,
+    onApproveCoa,
     onAcceptInterpretation,
+    onRejectCoa,
     onRejectInterpretation,
     onTransmitClip,
     pictureState,
@@ -813,7 +881,12 @@ function eventLedgerPanelBody(picture: LogisticsPictureScenario) {
   );
 }
 
-function coaReviewPanelBody(picture: LogisticsPictureScenario) {
+function coaReviewPanelBody(
+  picture: LogisticsPictureScenario,
+  coaActionState: CoaActionState,
+  onApproveCoa: (coaId: string) => void,
+  onRejectCoa: (coaId: string) => void
+) {
   if (picture.executable_coas.length === 0) {
     return <p>{picture.supply_convoy.callsign} remains in {picture.supply_convoy.movement_status}.</p>;
   }
@@ -824,6 +897,13 @@ function coaReviewPanelBody(picture: LogisticsPictureScenario) {
         <section className="coa-item" key={coa.coa_id}>
           <h3>{coa.name}</h3>
           <p>{coa.rationale}</p>
+          <small>
+            {formatCoaDecisionStatus(
+              coa.decision_status,
+              coa.decision_event_id,
+              picture.logistics_watch_officer
+            )}
+          </small>
           {coa.movements.map((movement) => (
             <div className="coa-movement" key={movement.movement_id}>
               <strong>{movement.movement_status}</strong>
@@ -850,10 +930,47 @@ function coaReviewPanelBody(picture: LogisticsPictureScenario) {
               </ul>
             </div>
           ))}
+          {coa.decision_status === "proposed" ? (
+            <div className="coa-actions">
+              <button
+                disabled={coaActionState.kind === "working" && coaActionState.coaId === coa.coa_id}
+                onClick={() => onApproveCoa(coa.coa_id)}
+                type="button"
+              >
+                Approve COA
+              </button>
+              <button
+                disabled={coaActionState.kind === "working" && coaActionState.coaId === coa.coa_id}
+                onClick={() => onRejectCoa(coa.coa_id)}
+                type="button"
+              >
+                Reject COA
+              </button>
+            </div>
+          ) : null}
+          {coaActionState.kind === "error" ? (
+            <small className="failure">{coaActionState.message}</small>
+          ) : null}
         </section>
       ))}
     </div>
   );
+}
+
+function formatCoaDecisionStatus(
+  status: "proposed" | "approved" | "rejected",
+  eventId: string | null,
+  logisticsWatchOfficer: string
+) {
+  if (status === "approved") {
+    return eventId ? `Approved by ${logisticsWatchOfficer}: ${eventId}` : `Approved by ${logisticsWatchOfficer}`;
+  }
+
+  if (status === "rejected") {
+    return eventId ? `Rejected by ${logisticsWatchOfficer}: ${eventId}` : `Rejected by ${logisticsWatchOfficer}`;
+  }
+
+  return `Awaiting ${logisticsWatchOfficer} COA Approval`;
 }
 
 function formatAcceptedEventCount(count: number) {

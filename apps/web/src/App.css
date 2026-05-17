@@ -647,6 +647,36 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.coa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.coa-actions button {
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 6px 8px;
+}
+
+.coa-actions button:first-child {
+  background: #1f7a64;
+}
+
+.coa-actions button:last-child {
+  background: #4d5c55;
+}
+
+.coa-actions button:disabled {
+  background: #87918c;
+  cursor: wait;
+}
+
 .radio-clip {
   border-top: 1px solid #e3e8e4;
   display: grid;

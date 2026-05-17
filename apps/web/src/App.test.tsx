@@ -113,6 +113,8 @@ const scenarioResponse: LogisticsPictureScenario = {
     location_id: "hauler-position",
     movement_status: "Proposed Movement Status",
     route_summary: "Test LSA Raven to Test LRP Cobalt",
+    selected_route_variant_id: null,
+    selected_route_name: null,
     route_location_ids: ["test-lsa", "hauler-position", "test-lrp"],
     supply_load: [
       {
@@ -420,6 +422,8 @@ const scenarioWithExecutableCoaResponse: LogisticsPictureScenario = {
         "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal"
       ],
       rationale: "Accepted Denied Area and Supply Signal require a bypass LOGPAC revision.",
+      decision_status: "proposed",
+      decision_event_id: null,
       movements: [
         {
           movement_id: "mov-route-dagger-western-bypass-nomad-jp8",
@@ -461,6 +465,99 @@ const scenarioWithExecutableCoaResponse: LogisticsPictureScenario = {
     ...scenarioAfterHazardAcceptedResponse.event_ledger,
     ...scenarioAfterSupplySignalResponse.event_ledger
   ]
+};
+
+const approvedCoaDecisionEvent: AcceptedDomainEvent = {
+  event_id: "evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-approval",
+  event_type: "coa_decision",
+  subject_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+  source_callsign: "Hammer 4",
+  occurred_at: "2026-05-17T03:25:00Z",
+  accepted_at: "2026-05-17T03:25:00Z",
+  summary: "Hammer 4 approved Route Dagger Western Bypass / Nomad JP-8 Resupply.",
+  evidence: [
+    {
+      kind: "executable_coa",
+      reference: "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    }
+  ],
+  coa_decision: {
+    coa_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+    decision: "approved",
+    decided_by: "Hammer 4",
+    movement_id: "mov-route-dagger-western-bypass-nomad-jp8",
+    selected_route_variant_id: "route-variant-route-dagger-western-bypass",
+    selected_route_name: "Route Dagger Western Bypass"
+  }
+};
+
+const rejectedCoaDecisionEvent: AcceptedDomainEvent = {
+  event_id: "evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-rejection",
+  event_type: "coa_decision",
+  subject_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+  source_callsign: "Hammer 4",
+  occurred_at: "2026-05-17T03:25:00Z",
+  accepted_at: "2026-05-17T03:25:00Z",
+  summary: "Hammer 4 rejected Route Dagger Western Bypass / Nomad JP-8 Resupply.",
+  evidence: [
+    {
+      kind: "executable_coa",
+      reference: "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    }
+  ],
+  coa_decision: {
+    coa_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+    decision: "rejected",
+    decided_by: "Hammer 4"
+  }
+};
+
+const scenarioAfterCoaApprovalResponse: LogisticsPictureScenario = {
+  ...scenarioWithExecutableCoaResponse,
+  supply_convoy: {
+    ...scenarioWithExecutableCoaResponse.supply_convoy,
+    movement_status: "Approved Movement Status",
+    route_summary: "Route Dagger Western Bypass",
+    selected_route_variant_id: "route-variant-route-dagger-western-bypass",
+    selected_route_name: "Route Dagger Western Bypass",
+    supply_load: [
+      {
+        tracked_supply: "JP-8",
+        class_of_supply: "Class III",
+        quantity: 480,
+        unit: "gal",
+        destination_unit_id: "raven"
+      }
+    ]
+  },
+  executable_coas: scenarioWithExecutableCoaResponse.executable_coas.map((coa) => ({
+    ...coa,
+    decision_status: "approved",
+    decision_event_id: approvedCoaDecisionEvent.event_id,
+    movements: coa.movements.map((movement) => ({
+      ...movement,
+      movement_status: "Approved Movement Status"
+    }))
+  })),
+  projection: {
+    source: "Event Ledger",
+    accepted_event_count: 3
+  },
+  event_ledger: [...scenarioWithExecutableCoaResponse.event_ledger, approvedCoaDecisionEvent]
+};
+
+const scenarioAfterCoaRejectionResponse: LogisticsPictureScenario = {
+  ...scenarioWithExecutableCoaResponse,
+  executable_coas: scenarioWithExecutableCoaResponse.executable_coas.map((coa) => ({
+    ...coa,
+    decision_status: "rejected",
+    decision_event_id: rejectedCoaDecisionEvent.event_id
+  })),
+  projection: {
+    source: "Event Ledger",
+    accepted_event_count: 3
+  },
+  event_ledger: [...scenarioWithExecutableCoaResponse.event_ledger, rejectedCoaDecisionEvent]
 };
 
 describe("App", () => {
@@ -733,6 +830,78 @@ describe("App", () => {
         "Raven JP-8 improves from 0.9 DOS red to 1.7 DOS amber before projected black time 2026-05-18T00:24:00Z."
       )
     ).toBeInTheDocument();
+    expect(screen.getByText("Awaiting Anvil 3 COA Approval")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve COA" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject COA" })).toBeInTheDocument();
+  });
+
+  it("approves a generated Executable COA and refreshes applied Logistics Picture state", async () => {
+    mockApiFetch({
+      scenario: scenarioWithExecutableCoaResponse,
+      scenarioAfterCoaApproval: scenarioAfterCoaApprovalResponse,
+      coaDecisionEvent: approvedCoaDecisionEvent
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Approve COA" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Approve COA" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Approved by Anvil 3: evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-approval"
+        )
+      ).toBeInTheDocument();
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/approve",
+      {
+        method: "POST"
+      }
+    );
+    expect(screen.getByText("Approved Movement Status: Route Dagger Western Bypass")).toBeInTheDocument();
+    expect(screen.getByText("Selected Route Variant: Route Dagger Western Bypass")).toBeInTheDocument();
+    expect(screen.getAllByText("480 gal")).not.toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "Approve COA" })).not.toBeInTheDocument();
+  });
+
+  it("rejects a generated Executable COA without applying the proposed Movement", async () => {
+    mockApiFetch({
+      scenario: scenarioWithExecutableCoaResponse,
+      scenarioAfterCoaRejection: scenarioAfterCoaRejectionResponse,
+      coaDecisionEvent: rejectedCoaDecisionEvent
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Reject COA" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reject COA" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Rejected by Anvil 3: evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-rejection"
+        )
+      ).toBeInTheDocument();
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/reject",
+      {
+        method: "POST"
+      }
+    );
+    expect(screen.getByText("Proposed Movement Status: Test LSA Raven to Test LRP Cobalt")).toBeInTheDocument();
+    expect(screen.queryByText("Selected Route Variant: Route Dagger Western Bypass")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reject COA" })).not.toBeInTheDocument();
   });
 });
 
@@ -743,9 +912,12 @@ function mockApiFetch({
   scenarioStatus = 200,
   scenarioAfterTransmission,
   scenarioAfterAcceptedInterpretation,
+  scenarioAfterCoaApproval,
+  scenarioAfterCoaRejection,
   prerecordedClips = prerecordedClipsResponse,
   transmission = radioTransmissionResponse,
-  acceptedInterpretationEvent = acceptedDeniedAreaEvent
+  acceptedInterpretationEvent = acceptedDeniedAreaEvent,
+  coaDecisionEvent = approvedCoaDecisionEvent
 }: {
   readiness?: ReadinessResponse;
   readinessStatus?: number;
@@ -753,12 +925,17 @@ function mockApiFetch({
   scenarioStatus?: number;
   scenarioAfterTransmission?: LogisticsPictureScenario;
   scenarioAfterAcceptedInterpretation?: LogisticsPictureScenario;
+  scenarioAfterCoaApproval?: LogisticsPictureScenario;
+  scenarioAfterCoaRejection?: LogisticsPictureScenario;
   prerecordedClips?: PrerecordedRadioClip[];
   transmission?: RadioTransmission;
   acceptedInterpretationEvent?: AcceptedDomainEvent;
+  coaDecisionEvent?: AcceptedDomainEvent;
 } = {}) {
   let transmissionAccepted = false;
   let interpretationAccepted = false;
+  let coaApproved = false;
+  let coaRejected = false;
 
   vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
@@ -768,6 +945,14 @@ function mockApiFetch({
     }
 
     if (url === "http://localhost:8000/scenarios/kaohsiung-tainan/logistics-picture") {
+      if (coaApproved && scenarioAfterCoaApproval) {
+        return Promise.resolve(jsonResponse(scenarioAfterCoaApproval, scenarioStatus));
+      }
+
+      if (coaRejected && scenarioAfterCoaRejection) {
+        return Promise.resolve(jsonResponse(scenarioAfterCoaRejection, scenarioStatus));
+      }
+
       if (interpretationAccepted && scenarioAfterAcceptedInterpretation) {
         return Promise.resolve(jsonResponse(scenarioAfterAcceptedInterpretation, scenarioStatus));
       }
@@ -794,6 +979,22 @@ function mockApiFetch({
     ) {
       interpretationAccepted = true;
       return Promise.resolve(jsonResponse(acceptedInterpretationEvent, 201));
+    }
+
+    if (
+      url === "http://localhost:8000/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/approve" &&
+      init?.method === "POST"
+    ) {
+      coaApproved = true;
+      return Promise.resolve(jsonResponse(coaDecisionEvent, 201));
+    }
+
+    if (
+      url === "http://localhost:8000/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/reject" &&
+      init?.method === "POST"
+    ) {
+      coaRejected = true;
+      return Promise.resolve(jsonResponse(coaDecisionEvent, 201));
     }
 
     return Promise.reject(new Error(`Unhandled fetch to ${url}`));
