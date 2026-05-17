@@ -117,6 +117,37 @@ class GeneratedRouteVariant(BaseModel):
     evaluation: RouteEvaluation
 
 
+class CoaLogpacItem(BaseModel):
+    tracked_supply: str
+    class_of_supply: str
+    quantity: float
+    unit: str
+    destination_unit_id: str
+    destination_callsign: str
+    reason: str
+
+
+class CoaMovement(BaseModel):
+    movement_id: str
+    movement_status: str
+    route_variant_id: str | None
+    route_name: str
+    depart_at: str
+    arrive_at: str
+    logpac: list[CoaLogpacItem]
+    assumptions: list[str]
+    risks: list[str]
+    projected_effect: str
+
+
+class ExecutableCourseOfAction(BaseModel):
+    coa_id: str
+    name: str
+    source_event_ids: list[str]
+    rationale: str
+    movements: list[CoaMovement]
+
+
 class ProjectionMetadata(BaseModel):
     source: str = "Scenario Seed"
     accepted_event_count: int = 0
@@ -136,6 +167,7 @@ class LogisticsPictureScenario(BaseModel):
     supply_convoy: SupplyConvoy
     denied_areas: list[DeniedArea] = Field(default_factory=list)
     generated_routes: list[GeneratedRouteVariant] = Field(default_factory=list)
+    executable_coas: list[ExecutableCourseOfAction] = Field(default_factory=list)
     projection: ProjectionMetadata = Field(default_factory=ProjectionMetadata)
     event_ledger: list[AcceptedDomainEvent] = Field(default_factory=list)
 
@@ -176,6 +208,7 @@ def project_logistics_picture(
         accepted_event_count=len(accepted_events),
     )
     projected.generated_routes = generate_route_variants(projected)
+    projected.executable_coas = generate_executable_coas(projected, accepted_events)
     return projected
 
 
@@ -406,6 +439,197 @@ def point_inside_denied_area(
     return (latitude_delta * latitude_delta + longitude_delta * longitude_delta) <= 0.0001
 
 
+def generate_executable_coas(
+    scenario: LogisticsPictureScenario,
+    accepted_events: list[AcceptedDomainEvent],
+) -> list[ExecutableCourseOfAction]:
+    denied_area_event = next(
+        (event for event in accepted_events if event.event_type == "denied_area_created"),
+        None,
+    )
+    supply_signal_event = next(
+        (
+            event
+            for event in accepted_events
+            if event.event_type == "supply_signal" and event.supply_signal is not None
+        ),
+        None,
+    )
+    if denied_area_event is None and supply_signal_event is None:
+        return []
+
+    route = selected_route_variant(scenario)
+    route_name = route.name if route is not None else "Route Dagger Baseline"
+    route_variant_id = route.route_id if route is not None else "route-variant-route-dagger-baseline"
+    estimated_minutes = route.estimated_minutes if route is not None else 52
+    depart_at = parse_utc_timestamp("2026-05-17T04:00:00Z")
+    arrive_at = format_utc_timestamp(depart_at + timedelta(minutes=estimated_minutes))
+    logpac = coa_logpac_items(scenario, supply_signal_event)
+    route_slug = "western-bypass" if route_name == "Route Dagger Western Bypass" else "baseline"
+
+    if supply_signal_event is not None:
+        coa_id = f"coa-route-dagger-{route_slug}-nomad-jp8-resupply"
+        name = f"{route_name} / Nomad JP-8 Resupply"
+        movement_id = f"mov-route-dagger-{route_slug}-nomad-jp8"
+    else:
+        coa_id = f"coa-route-dagger-{route_slug}"
+        name = route_name
+        movement_id = f"mov-route-dagger-{route_slug}"
+
+    return [
+        ExecutableCourseOfAction(
+            coa_id=coa_id,
+            name=name,
+            source_event_ids=[
+                event.event_id
+                for event in accepted_events
+                if event in [denied_area_event, supply_signal_event]
+            ],
+            rationale=coa_rationale(denied_area_event, supply_signal_event),
+            movements=[
+                CoaMovement(
+                    movement_id=movement_id,
+                    movement_status="Proposed Movement Status",
+                    route_variant_id=route_variant_id,
+                    route_name=route_name,
+                    depart_at=format_utc_timestamp(depart_at),
+                    arrive_at=arrive_at,
+                    logpac=logpac,
+                    assumptions=coa_assumptions(route_name),
+                    risks=coa_risks(scenario, supply_signal_event),
+                    projected_effect=coa_projected_effect(scenario, supply_signal_event),
+                )
+            ],
+        )
+    ]
+
+
+def selected_route_variant(
+    scenario: LogisticsPictureScenario,
+) -> GeneratedRouteVariant | None:
+    avoiding_routes = [
+        route
+        for route in scenario.generated_routes
+        if route.evaluation.status == "avoids_denied_areas"
+    ]
+    if avoiding_routes:
+        return avoiding_routes[0]
+
+    return scenario.generated_routes[0] if scenario.generated_routes else None
+
+
+def coa_logpac_items(
+    scenario: LogisticsPictureScenario,
+    supply_signal_event: AcceptedDomainEvent | None,
+) -> list[CoaLogpacItem]:
+    if supply_signal_event is None or supply_signal_event.supply_signal is None:
+        return [
+            CoaLogpacItem(
+                tracked_supply=item.tracked_supply,
+                class_of_supply=item.class_of_supply,
+                quantity=item.quantity,
+                unit=item.unit,
+                destination_unit_id=item.destination_unit_id,
+                destination_callsign=destination_callsign(scenario, item.destination_unit_id),
+                reason="Maintain existing Mule 2 LOGPAC load.",
+            )
+            for item in scenario.supply_convoy.supply_load
+        ]
+
+    signal = supply_signal_event.supply_signal
+    unit = supported_unit(scenario, signal.unit_id)
+    item = inventory_item_for_supply_signal(scenario, signal)
+    if unit is None or item is None:
+        return []
+
+    return [
+        CoaLogpacItem(
+            tracked_supply=signal.tracked_supply,
+            class_of_supply=item.class_of_supply,
+            quantity=480.0,
+            unit=item.unit,
+            destination_unit_id=unit.id,
+            destination_callsign=unit.callsign,
+            reason="Restore Nomad JP-8 above red after 3.2x burn-rate Supply Signal.",
+        )
+    ]
+
+
+def coa_rationale(
+    denied_area_event: AcceptedDomainEvent | None,
+    supply_signal_event: AcceptedDomainEvent | None,
+) -> str:
+    if denied_area_event is not None and supply_signal_event is not None:
+        return "Accepted Denied Area and Supply Signal require a bypass LOGPAC revision."
+
+    if denied_area_event is not None:
+        return "Accepted Denied Area requires Route Dagger bypass movement."
+
+    return "Accepted Supply Signal requires LOGPAC revision."
+
+
+def coa_assumptions(route_name: str) -> list[str]:
+    return [
+        "Mule 2 remains available for one LOGPAC movement.",
+        f"{route_name} remains clear of accepted Denied Areas.",
+    ]
+
+
+def coa_risks(
+    scenario: LogisticsPictureScenario,
+    supply_signal_event: AcceptedDomainEvent | None,
+) -> list[str]:
+    risks = []
+    if scenario.denied_areas:
+        risks.append(
+            "Route Dagger baseline conflicts with Route Dagger Checkpoint Slate Denied Area."
+        )
+
+    if supply_signal_event is not None and supply_signal_event.supply_signal is not None:
+        item = inventory_item_for_supply_signal(scenario, supply_signal_event.supply_signal)
+        if item is not None and item.projected_black_time is not None:
+            risks.append(
+                f"Nomad JP-8 reaches projected black time at {item.projected_black_time} without resupply."
+            )
+
+    return risks
+
+
+def coa_projected_effect(
+    scenario: LogisticsPictureScenario,
+    supply_signal_event: AcceptedDomainEvent | None,
+) -> str:
+    if supply_signal_event is None or supply_signal_event.supply_signal is None:
+        return "Mule 2 avoids the accepted Denied Area while preserving the existing LOGPAC."
+
+    item = inventory_item_for_supply_signal(scenario, supply_signal_event.supply_signal)
+    if item is None or item.projection is None or item.projection.projected_daily_burn_rate is None:
+        return "Nomad JP-8 receives priority resupply before projected black time."
+
+    replenished_days = round((item.quantity + 480.0) / item.projection.projected_daily_burn_rate, 1)
+    replenished_status = status_for_days_of_supply(replenished_days)
+    return (
+        f"Nomad JP-8 improves from {item.days_of_supply} DOS {item.status} "
+        f"to {replenished_days} DOS {replenished_status} before projected black time "
+        f"{item.projected_black_time}."
+    )
+
+
+def supported_unit(
+    scenario: LogisticsPictureScenario,
+    unit_id: str,
+) -> SupportedUnit | None:
+    return next((unit for unit in scenario.supported_units if unit.id == unit_id), None)
+
+
+def destination_callsign(
+    scenario: LogisticsPictureScenario,
+    unit_id: str,
+) -> str:
+    unit = supported_unit(scenario, unit_id)
+    return unit.callsign if unit is not None else unit_id
+
+
 def daily_burn_rate(
     quantity: float,
     days_of_supply: float | None,
@@ -436,3 +660,7 @@ def format_utc_timestamp(value: datetime) -> str:
         .isoformat()
         .replace("+00:00", "Z")
     )
+
+
+def parse_utc_timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)

@@ -126,6 +126,7 @@ const scenarioResponse: LogisticsPictureScenario = {
   },
   denied_areas: [],
   generated_routes: [],
+  executable_coas: [],
   projection: {
     source: "Scenario Seed",
     accepted_event_count: 0
@@ -407,6 +408,61 @@ const scenarioAfterSupplySignalResponse: LogisticsPictureScenario = {
   ]
 };
 
+const scenarioWithExecutableCoaResponse: LogisticsPictureScenario = {
+  ...scenarioAfterHazardAcceptedResponse,
+  supported_units: scenarioAfterSupplySignalResponse.supported_units,
+  executable_coas: [
+    {
+      coa_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+      name: "Route Dagger Western Bypass / Nomad JP-8 Resupply",
+      source_event_ids: [
+        "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area",
+        "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal"
+      ],
+      rationale: "Accepted Denied Area and Supply Signal require a bypass LOGPAC revision.",
+      movements: [
+        {
+          movement_id: "mov-route-dagger-western-bypass-nomad-jp8",
+          movement_status: "Proposed Movement Status",
+          route_variant_id: "route-variant-route-dagger-western-bypass",
+          route_name: "Route Dagger Western Bypass",
+          depart_at: "2026-05-17T04:00:00Z",
+          arrive_at: "2026-05-17T05:04:00Z",
+          logpac: [
+            {
+              tracked_supply: "JP-8",
+              class_of_supply: "Class III",
+              quantity: 480,
+              unit: "gal",
+              destination_unit_id: "raven",
+              destination_callsign: "Raven",
+              reason: "Restore Raven JP-8 above red after 3.2x burn-rate Supply Signal."
+            }
+          ],
+          assumptions: [
+            "Hauler 8 remains available for one LOGPAC movement.",
+            "Route Dagger Western Bypass remains clear of accepted Denied Areas."
+          ],
+          risks: [
+            "Route Dagger baseline conflicts with Route Dagger Checkpoint Slate Denied Area.",
+            "Raven JP-8 reaches projected black time at 2026-05-18T00:24:00Z without resupply."
+          ],
+          projected_effect:
+            "Raven JP-8 improves from 0.9 DOS red to 1.7 DOS amber before projected black time 2026-05-18T00:24:00Z."
+        }
+      ]
+    }
+  ],
+  projection: {
+    source: "Event Ledger",
+    accepted_event_count: 2
+  },
+  event_ledger: [
+    ...scenarioAfterHazardAcceptedResponse.event_ledger,
+    ...scenarioAfterSupplySignalResponse.event_ledger
+  ]
+};
+
 describe("App", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -655,6 +711,28 @@ describe("App", () => {
     expect(screen.getByText("Status: green to red")).toBeInTheDocument();
     expect(screen.getByText("Projected black: 2026-05-18T00:24:00Z")).toBeInTheDocument();
     expect(screen.getByText("Raven 6 reports Test Fuel burn rate at 3.2x baseline.")).toBeInTheDocument();
+  });
+
+  it("renders regenerated Executable COAs with one proposed Movement", async () => {
+    mockApiFetch({ scenario: scenarioWithExecutableCoaResponse });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Route Dagger Western Bypass / Nomad JP-8 Resupply")).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText("Proposed Movement Status")).not.toHaveLength(0);
+    expect(screen.getAllByText("Route Dagger Western Bypass")).not.toHaveLength(0);
+    expect(screen.getByText("2026-05-17T04:00:00Z to 2026-05-17T05:04:00Z")).toBeInTheDocument();
+    expect(screen.getByText("480 gal JP-8 to Raven")).toBeInTheDocument();
+    expect(screen.getByText("Accepted Denied Area and Supply Signal require a bypass LOGPAC revision.")).toBeInTheDocument();
+    expect(screen.getByText("Route Dagger baseline conflicts with Route Dagger Checkpoint Slate Denied Area.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Raven JP-8 improves from 0.9 DOS red to 1.7 DOS amber before projected black time 2026-05-18T00:24:00Z."
+      )
+    ).toBeInTheDocument();
   });
 });
 

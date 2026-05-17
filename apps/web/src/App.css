@@ -591,6 +591,62 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.coa-review {
+  gap: 10px;
+}
+
+.coa-item {
+  border-top: 1px solid #e3e8e4;
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.coa-item h3 {
+  color: #17211d;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.coa-movement {
+  display: grid;
+  gap: 4px;
+}
+
+.coa-movement strong,
+.coa-movement span {
+  color: #26342e;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.coa-movement small {
+  color: #5f6d65;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.coa-movement ul {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coa-movement li {
+  color: #26342e;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.coa-movement .coa-detail-list li {
+  color: #5f6d65;
+  font-size: 0.74rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
 .radio-clip {
   border-top: 1px solid #e3e8e4;
   display: grid;

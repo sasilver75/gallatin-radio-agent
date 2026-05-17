@@ -128,6 +128,37 @@ export type GeneratedRouteVariant = {
   evaluation: RouteEvaluation;
 };
 
+export type CoaLogpacItem = {
+  tracked_supply: string;
+  class_of_supply: string;
+  quantity: number;
+  unit: string;
+  destination_unit_id: string;
+  destination_callsign: string;
+  reason: string;
+};
+
+export type CoaMovement = {
+  movement_id: string;
+  movement_status: string;
+  route_variant_id: string | null;
+  route_name: string;
+  depart_at: string;
+  arrive_at: string;
+  logpac: CoaLogpacItem[];
+  assumptions: string[];
+  risks: string[];
+  projected_effect: string;
+};
+
+export type ExecutableCourseOfAction = {
+  coa_id: string;
+  name: string;
+  source_event_ids: string[];
+  rationale: string;
+  movements: CoaMovement[];
+};
+
 export type EventEvidence = {
   kind: string;
   reference: string;
@@ -238,6 +269,7 @@ export type LogisticsPictureScenario = {
   supply_convoy: SupplyConvoy;
   denied_areas: DeniedArea[];
   generated_routes: GeneratedRouteVariant[];
+  executable_coas: ExecutableCourseOfAction[];
   projection: ProjectionMetadata;
   event_ledger: AcceptedDomainEvent[];
 };

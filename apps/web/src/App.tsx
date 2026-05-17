@@ -603,7 +603,7 @@ function WorkspacePanels({
       },
       {
         title: "COA Review",
-        body: `${picture.supply_convoy.callsign} remains in ${picture.supply_convoy.movement_status}.`
+        body: coaReviewPanelBody(picture)
       }
     ] satisfies WorkspacePanel[];
   }, [
@@ -809,6 +809,49 @@ function eventLedgerPanelBody(picture: LogisticsPictureScenario) {
       </p>
       <p>{latestEvent.summary}</p>
       {evidence ? <p className="panel-evidence">{evidence.reference}</p> : null}
+    </div>
+  );
+}
+
+function coaReviewPanelBody(picture: LogisticsPictureScenario) {
+  if (picture.executable_coas.length === 0) {
+    return <p>{picture.supply_convoy.callsign} remains in {picture.supply_convoy.movement_status}.</p>;
+  }
+
+  return (
+    <div className="panel-details coa-review">
+      {picture.executable_coas.map((coa) => (
+        <section className="coa-item" key={coa.coa_id}>
+          <h3>{coa.name}</h3>
+          <p>{coa.rationale}</p>
+          {coa.movements.map((movement) => (
+            <div className="coa-movement" key={movement.movement_id}>
+              <strong>{movement.movement_status}</strong>
+              <span>{movement.route_name}</span>
+              <small>
+                {movement.depart_at} to {movement.arrive_at}
+              </small>
+              <ul>
+                {movement.logpac.map((item) => (
+                  <li key={`${movement.movement_id}-${item.destination_unit_id}-${item.tracked_supply}`}>
+                    {formatQuantity(item.quantity)} {item.unit} {item.tracked_supply} to{" "}
+                    {item.destination_callsign}
+                  </li>
+                ))}
+              </ul>
+              <p>{movement.projected_effect}</p>
+              <ul className="coa-detail-list">
+                {movement.assumptions.map((assumption) => (
+                  <li key={`${movement.movement_id}-assumption-${assumption}`}>{assumption}</li>
+                ))}
+                {movement.risks.map((risk) => (
+                  <li key={`${movement.movement_id}-risk-${risk}`}>{risk}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      ))}
     </div>
   );
 }
