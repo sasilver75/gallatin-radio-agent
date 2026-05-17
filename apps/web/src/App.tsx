@@ -13,12 +13,15 @@ import {
   RadioTransmission,
   ReadinessResponse,
   ReviewRequiredRadioInterpretation,
+  ScenarioPlayback,
+  ScenarioPlaybackStep,
   SupplyStatus,
   acceptProposedInterpretation,
   approveExecutableCoa,
   fetchLogisticsPicture,
   fetchPrerecordedRadioClips,
   fetchReadiness,
+  fetchScenarioPlayback,
   rejectExecutableCoa,
   rejectProposedInterpretation,
   transmitPrerecordedRadioClip
@@ -39,6 +42,11 @@ type PictureLoadState =
 type PrerecordedClipsLoadState =
   | { kind: "loading" }
   | { kind: "ready"; clips: PrerecordedRadioClip[] }
+  | { kind: "error"; message: string };
+
+type ScenarioPlaybackLoadState =
+  | { kind: "loading" }
+  | { kind: "ready"; playback: ScenarioPlayback }
   | { kind: "error"; message: string };
 
 type TransmissionLoadState =
@@ -62,6 +70,12 @@ type CoaActionState =
       coaId: string;
     }
   | { kind: "error"; message: string };
+
+type PlaybackRunState =
+  | { kind: "idle"; completedStepIds: string[] }
+  | { kind: "running"; activeStepId: string; completedStepIds: string[] }
+  | { kind: "complete"; completedStepIds: string[] }
+  | { kind: "error"; completedStepIds: string[]; message: string };
 
 type MapEntity = {
   id: string;
@@ -88,6 +102,9 @@ function App() {
   const [clipsState, setClipsState] = useState<PrerecordedClipsLoadState>({
     kind: "loading"
   });
+  const [playbackState, setPlaybackState] = useState<ScenarioPlaybackLoadState>({
+    kind: "loading"
+  });
   const [transmissionState, setTransmissionState] = useState<TransmissionLoadState>({
     kind: "idle"
   });
@@ -96,6 +113,10 @@ function App() {
   });
   const [coaActionState, setCoaActionState] = useState<CoaActionState>({
     kind: "idle"
+  });
+  const [playbackRunState, setPlaybackRunState] = useState<PlaybackRunState>({
+    kind: "idle",
+    completedStepIds: []
   });
 
   useEffect(() => {
@@ -143,6 +164,41 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    fetchScenarioPlayback()
+      .then((playback) => {
+        if (!active) return;
+        setPlaybackState({ kind: "ready", playback });
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setPlaybackState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Unknown Scenario Playback error"
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function refreshLogisticsPicture() {
+    try {
+      const picture = await fetchLogisticsPicture();
+      setPictureState({ kind: "ready", picture });
+      return picture;
+    } catch (error: unknown) {
+      setPictureState({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Unknown Logistics Picture error"
+      });
+      throw error;
+    }
+  }
+
   function transmitClip(clipId: string) {
     setTransmissionState({ kind: "transcribing" });
     setReviewActionState({ kind: "idle" });
@@ -167,6 +223,82 @@ function App() {
           message: error instanceof Error ? error.message : "Unknown transcription error"
         });
       });
+  }
+
+  async function transmitPlaybackClip(clipId: string) {
+    setTransmissionState({ kind: "transcribing" });
+    setReviewActionState({ kind: "idle" });
+
+    const transmission = await transmitPrerecordedRadioClip(clipId);
+    setTransmissionState({ kind: "ready", transmission });
+    await refreshLogisticsPicture();
+    return transmission;
+  }
+
+  async function runScenarioPlayback(playback: ScenarioPlayback) {
+    let completedStepIds: string[] = [];
+    setPlaybackRunState({ kind: "running", activeStepId: playback.steps[0]?.step_id ?? "", completedStepIds });
+
+    try {
+      for (const step of playback.steps) {
+        setPlaybackRunState({
+          kind: "running",
+          activeStepId: step.step_id,
+          completedStepIds
+        });
+        await runPlaybackStep(step);
+        completedStepIds = [...completedStepIds, step.step_id];
+        setPlaybackRunState({
+          kind: "running",
+          activeStepId: step.step_id,
+          completedStepIds
+        });
+      }
+      setPlaybackRunState({ kind: "complete", completedStepIds });
+    } catch (error: unknown) {
+      setReviewActionState({ kind: "idle" });
+      setCoaActionState({ kind: "idle" });
+      setPlaybackRunState({
+        kind: "error",
+        completedStepIds,
+        message: error instanceof Error ? error.message : "Unknown Scenario Playback error"
+      });
+    }
+  }
+
+  async function runPlaybackStep(step: ScenarioPlaybackStep) {
+    if (step.action === "transmit_prerecorded_clip" && step.clip_id) {
+      await transmitPlaybackClip(step.clip_id);
+      return;
+    }
+
+    if (step.action === "accept_proposed_interpretation" && step.interpretation_id) {
+      setReviewActionState({
+        kind: "working",
+        interpretationId: step.interpretation_id
+      });
+      const event = await acceptProposedInterpretation(step.interpretation_id);
+      updateReviewInterpretation(step.interpretation_id, {
+        domain_event_id: event.event_id,
+        status: "accepted"
+      });
+      await refreshLogisticsPicture();
+      setReviewActionState({ kind: "idle" });
+      return;
+    }
+
+    if (step.action === "approve_executable_coa" && step.coa_id) {
+      setCoaActionState({
+        kind: "working",
+        coaId: step.coa_id
+      });
+      await approveExecutableCoa(step.coa_id);
+      await refreshLogisticsPicture();
+      setCoaActionState({ kind: "idle" });
+      return;
+    }
+
+    throw new Error(`Unsupported playback step: ${step.step_id}`);
   }
 
   function acceptReviewRequiredInterpretation(interpretationId: string) {
@@ -334,6 +466,8 @@ function App() {
       <WorkspacePanels
         pictureState={pictureState}
         clipsState={clipsState}
+        playbackState={playbackState}
+        playbackRunState={playbackRunState}
         transmissionState={transmissionState}
         reviewActionState={reviewActionState}
         coaActionState={coaActionState}
@@ -341,6 +475,7 @@ function App() {
         onApproveCoa={approveGeneratedCoa}
         onRejectCoa={rejectGeneratedCoa}
         onRejectInterpretation={rejectReviewRequiredInterpretation}
+        onRunPlayback={runScenarioPlayback}
         onTransmitClip={transmitClip}
       />
     </main>
@@ -605,6 +740,8 @@ type WorkspacePanel = {
 function WorkspacePanels({
   pictureState,
   clipsState,
+  playbackState,
+  playbackRunState,
   transmissionState,
   reviewActionState,
   coaActionState,
@@ -612,10 +749,13 @@ function WorkspacePanels({
   onApproveCoa,
   onRejectCoa,
   onRejectInterpretation,
+  onRunPlayback,
   onTransmitClip
 }: {
   pictureState: PictureLoadState;
   clipsState: PrerecordedClipsLoadState;
+  playbackState: ScenarioPlaybackLoadState;
+  playbackRunState: PlaybackRunState;
   transmissionState: TransmissionLoadState;
   reviewActionState: ReviewActionState;
   coaActionState: CoaActionState;
@@ -623,6 +763,7 @@ function WorkspacePanels({
   onApproveCoa: (coaId: string) => void;
   onRejectCoa: (coaId: string) => void;
   onRejectInterpretation: (interpretationId: string) => void;
+  onRunPlayback: (playback: ScenarioPlayback) => void;
   onTransmitClip: (clipId: string) => void;
 }) {
   const panels = useMemo(() => {
@@ -638,6 +779,16 @@ function WorkspacePanels({
     const { picture } = pictureState;
     const unitCallsigns = picture.supported_units.map((unit) => unit.callsign).join(", ");
     return [
+      {
+        title: "Scenario Playback",
+        body: (
+          <ScenarioPlaybackPanel
+            playbackRunState={playbackRunState}
+            playbackState={playbackState}
+            onRunPlayback={onRunPlayback}
+          />
+        )
+      },
       {
         title: "Field Radio Console",
         body: (
@@ -677,11 +828,14 @@ function WorkspacePanels({
   }, [
     coaActionState,
     clipsState,
+    onRunPlayback,
     onApproveCoa,
     onAcceptInterpretation,
     onRejectCoa,
     onRejectInterpretation,
     onTransmitClip,
+    playbackRunState,
+    playbackState,
     pictureState,
     reviewActionState,
     transmissionState
@@ -697,6 +851,66 @@ function WorkspacePanels({
       ))}
     </section>
   );
+}
+
+function ScenarioPlaybackPanel({
+  playbackState,
+  playbackRunState,
+  onRunPlayback
+}: {
+  playbackState: ScenarioPlaybackLoadState;
+  playbackRunState: PlaybackRunState;
+  onRunPlayback: (playback: ScenarioPlayback) => void;
+}) {
+  if (playbackState.kind === "loading") {
+    return <p className="muted">Loading Scenario Playback...</p>;
+  }
+
+  if (playbackState.kind === "error") {
+    return <p className="failure">{playbackState.message}</p>;
+  }
+
+  const { playback } = playbackState;
+  const isRunning = playbackRunState.kind === "running";
+
+  return (
+    <div className="panel-details scenario-playback">
+      <button disabled={isRunning} onClick={() => onRunPlayback(playback)} type="button">
+        {isRunning ? "Running Playback" : "Run Playback"}
+      </button>
+      <small>{playback.title}</small>
+      {playbackRunState.kind === "complete" ? <strong>Playback Complete</strong> : null}
+      {playbackRunState.kind === "error" ? (
+        <small className="failure">{playbackRunState.message}</small>
+      ) : null}
+      <ol>
+        {playback.steps.map((step) => (
+          <li key={step.step_id}>
+            <span>{step.sequence}</span>
+            <div>
+              <strong>{step.title}</strong>
+              <small>{playbackStepStatus(step, playbackRunState)}</small>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function playbackStepStatus(
+  step: ScenarioPlaybackStep,
+  playbackRunState: PlaybackRunState
+) {
+  if (playbackRunState.completedStepIds.includes(step.step_id)) {
+    return "Complete";
+  }
+
+  if (playbackRunState.kind === "running" && playbackRunState.activeStepId === step.step_id) {
+    return "Running";
+  }
+
+  return step.narrative_time;
 }
 
 function FieldRadioConsole({

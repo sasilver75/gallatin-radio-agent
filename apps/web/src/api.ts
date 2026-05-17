@@ -221,6 +221,30 @@ export type PrerecordedRadioClip = {
   audio: AudioMetadata;
 };
 
+export type ScenarioPlaybackAction =
+  | "transmit_prerecorded_clip"
+  | "accept_proposed_interpretation"
+  | "approve_executable_coa";
+
+export type ScenarioPlaybackStep = {
+  step_id: string;
+  sequence: number;
+  narrative_time: string;
+  title: string;
+  summary: string;
+  action: ScenarioPlaybackAction;
+  clip_id: string | null;
+  interpretation_id: string | null;
+  coa_id: string | null;
+};
+
+export type ScenarioPlayback = {
+  scenario_id: string;
+  title: string;
+  description: string;
+  steps: ScenarioPlaybackStep[];
+};
+
 export type TranscriptionMetadata = {
   pipeline: string;
   fixture_id: string;
@@ -369,6 +393,17 @@ export async function fetchPrerecordedRadioClips(): Promise<PrerecordedRadioClip
 
   if (!response.ok) {
     throw new Error(`Prerecorded Radio Clip fetch failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function fetchScenarioPlayback(): Promise<ScenarioPlayback> {
+  const response = await fetch(`${API_BASE_URL}/scenarios/kaohsiung-tainan/playback`);
+  const body = (await response.json()) as ScenarioPlayback;
+
+  if (!response.ok) {
+    throw new Error(`Scenario Playback fetch failed with HTTP ${response.status}`);
   }
 
   return body;

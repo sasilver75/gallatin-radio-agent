@@ -38,3 +38,36 @@ def test_kaohsiung_tainan_logistics_picture_returns_seed_entities() -> None:
         "Class III",
         "Class V",
     }
+
+
+def test_kaohsiung_tainan_playback_returns_scripted_narrative_order() -> None:
+    client = TestClient(create_app(event_ledger_store=InMemoryEventLedgerStore()))
+
+    response = client.get("/scenarios/kaohsiung-tainan/playback")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["scenario_id"] == "kaohsiung-tainan-v1"
+    assert body["title"] == "Kaohsiung-Tainan LOGPAC Playback"
+    assert [step["step_id"] for step in body["steps"]] == [
+        "mule-2-checkpoint-slate",
+        "nomad-route-dagger-hazard",
+        "hammer-4-accept-denied-area",
+        "nomad-jp8-burn-rate",
+        "hammer-4-approve-route-dagger-coa",
+        "hammer-4-quarterback-last-thirty",
+    ]
+    assert [step["action"] for step in body["steps"]] == [
+        "transmit_prerecorded_clip",
+        "transmit_prerecorded_clip",
+        "accept_proposed_interpretation",
+        "transmit_prerecorded_clip",
+        "approve_executable_coa",
+        "transmit_prerecorded_clip",
+    ]
+    assert body["steps"][2]["interpretation_id"] == (
+        "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+    )
+    assert body["steps"][4]["coa_id"] == (
+        "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    )

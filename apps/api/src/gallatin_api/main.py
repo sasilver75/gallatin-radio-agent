@@ -13,6 +13,7 @@ from gallatin_api.event_ledger import (
     EventEvidence,
     PostgresEventLedgerStore,
 )
+from gallatin_api.playback import ScenarioPlayback, load_kaohsiung_tainan_playback
 from gallatin_api.readiness import DependencyStatus, ReadinessResponse, check_postgis
 from gallatin_api.radio import (
     FixtureTranscriptionPipeline,
@@ -97,6 +98,13 @@ def create_app(
     )
     def kaohsiung_tainan_logistics_picture() -> LogisticsPictureScenario:
         return project_logistics_picture(provide_scenario(), ledger_store.list_events())
+
+    @app.get(
+        "/scenarios/kaohsiung-tainan/playback",
+        response_model=ScenarioPlayback,
+    )
+    def kaohsiung_tainan_playback() -> ScenarioPlayback:
+        return load_kaohsiung_tainan_playback()
 
     @app.post(
         "/events/accepted",
