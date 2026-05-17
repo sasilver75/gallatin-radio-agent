@@ -4,7 +4,7 @@ from typing import Literal, Protocol
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class EventCoordinate(BaseModel):
@@ -17,16 +17,38 @@ class EventEvidence(BaseModel):
     reference: str
 
 
+class DeniedArea(BaseModel):
+    denied_area_id: str
+    name: str
+    hazard_type: str
+    route_name: str
+    center: EventCoordinate
+    radius_meters: int
+    buffer_rule: str
+    polygon: list[EventCoordinate]
+
+
 class AcceptedDomainEvent(BaseModel):
     event_id: str
-    event_type: Literal["position_update"]
+    event_type: Literal["position_update", "denied_area_created"]
     subject_id: str
     source_callsign: str
     occurred_at: datetime
     accepted_at: datetime
     summary: str
     evidence: list[EventEvidence] = Field(default_factory=list)
-    position: EventCoordinate
+    position: EventCoordinate | None = None
+    denied_area: DeniedArea | None = None
+
+    @model_validator(mode="after")
+    def require_event_payload(self) -> "AcceptedDomainEvent":
+        if self.event_type == "position_update" and self.position is None:
+            raise ValueError("position_update events require a position payload")
+
+        if self.event_type == "denied_area_created" and self.denied_area is None:
+            raise ValueError("denied_area_created events require a denied_area payload")
+
+        return self
 
 
 class EventLedgerStore(Protocol):
@@ -83,7 +105,7 @@ class PostgresEventLedgerStore:
                     event.accepted_at,
                     event.summary,
                     Jsonb([evidence.model_dump() for evidence in event.evidence]),
-                    Jsonb({"position": event.position.model_dump()}),
+                    Jsonb(accepted_event_payload(event)),
                 ),
             )
         return event
@@ -119,7 +141,8 @@ class PostgresEventLedgerStore:
                     "accepted_at": normalize_utc(row["accepted_at"]),
                     "summary": row["summary"],
                     "evidence": row["evidence"],
-                    "position": row["payload"]["position"],
+                    "position": row["payload"].get("position"),
+                    "denied_area": row["payload"].get("denied_area"),
                 }
             )
             for row in rows
@@ -154,3 +177,15 @@ def normalize_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def accepted_event_payload(event: AcceptedDomainEvent) -> dict[str, object]:
+    payload: dict[str, object] = {}
+
+    if event.position is not None:
+        payload["position"] = event.position.model_dump()
+
+    if event.denied_area is not None:
+        payload["denied_area"] = event.denied_area.model_dump()
+
+    return payload

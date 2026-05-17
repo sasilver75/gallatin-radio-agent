@@ -86,6 +86,17 @@ export type SupplyConvoy = {
   supply_load: SupplyLoadItem[];
 };
 
+export type DeniedArea = {
+  denied_area_id: string;
+  name: string;
+  hazard_type: string;
+  route_name: string;
+  center: Coordinate;
+  radius_meters: number;
+  buffer_rule: string;
+  polygon: Coordinate[];
+};
+
 export type EventEvidence = {
   kind: string;
   reference: string;
@@ -93,14 +104,15 @@ export type EventEvidence = {
 
 export type AcceptedDomainEvent = {
   event_id: string;
-  event_type: "position_update";
+  event_type: "position_update" | "denied_area_created";
   subject_id: string;
   source_callsign: string;
   occurred_at: string;
   accepted_at: string;
   summary: string;
   evidence: EventEvidence[];
-  position: Coordinate;
+  position?: Coordinate;
+  denied_area?: DeniedArea;
 };
 
 export type ProjectionMetadata = {
@@ -129,13 +141,36 @@ export type TranscriptionMetadata = {
   fixture_id: string;
 };
 
-export type RadioInterpretation = {
+export type AutoAcceptedRadioInterpretation = {
   interpretation_id: string;
   kind: "auto_accepted";
   domain_event_id: string;
   summary: string;
   extracted_callsigns: string[];
 };
+
+export type ProposedHazardMeaning = {
+  hazard_type: string;
+  route_name: string;
+  location_name: string;
+  center: Coordinate;
+  buffer_radius_meters: number;
+  buffer_rule: string;
+};
+
+export type ReviewRequiredRadioInterpretation = {
+  interpretation_id: string;
+  kind: "review_required";
+  domain_event_id: string | null;
+  status: "pending" | "accepted" | "rejected";
+  summary: string;
+  extracted_callsigns: string[];
+  proposed_hazard: ProposedHazardMeaning;
+};
+
+export type RadioInterpretation =
+  | AutoAcceptedRadioInterpretation
+  | ReviewRequiredRadioInterpretation;
 
 export type RadioTransmission = {
   transmission_id: string;
@@ -161,6 +196,7 @@ export type LogisticsPictureScenario = {
   locations: NamedLocation[];
   supported_units: SupportedUnit[];
   supply_convoy: SupplyConvoy;
+  denied_areas: DeniedArea[];
   projection: ProjectionMetadata;
   event_ledger: AcceptedDomainEvent[];
 };
@@ -210,6 +246,36 @@ export async function transmitPrerecordedRadioClip(clipId: string): Promise<Radi
 
   if (!response.ok) {
     throw new Error(`Tactical Radio Audio transcription failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function acceptProposedInterpretation(
+  interpretationId: string
+): Promise<AcceptedDomainEvent> {
+  const response = await fetch(`${API_BASE_URL}/interpretations/proposed/${interpretationId}/accept`, {
+    method: "POST"
+  });
+  const body = (await response.json()) as AcceptedDomainEvent;
+
+  if (!response.ok) {
+    throw new Error(`Proposed Interpretation accept failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function rejectProposedInterpretation(
+  interpretationId: string
+): Promise<ReviewRequiredRadioInterpretation> {
+  const response = await fetch(`${API_BASE_URL}/interpretations/proposed/${interpretationId}/reject`, {
+    method: "POST"
+  });
+  const body = (await response.json()) as ReviewRequiredRadioInterpretation;
+
+  if (!response.ok) {
+    throw new Error(`Proposed Interpretation reject failed with HTTP ${response.status}`);
   }
 
   return body;

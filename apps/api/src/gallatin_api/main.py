@@ -11,11 +11,16 @@ from gallatin_api.event_ledger import (
 from gallatin_api.readiness import DependencyStatus, ReadinessResponse, check_postgis
 from gallatin_api.radio import (
     FixtureTranscriptionPipeline,
+    PostgresProposedInterpretationStore,
     PrerecordedRadioClipNotFound,
+    ProposedInterpretationNotFound,
+    ProposedInterpretationStore,
     PublicPrerecordedRadioClip,
     RadioTransmission,
     RadioTransmissionRequest,
+    ReviewRequiredRadioInterpretation,
     TranscriptionPipeline,
+    accepted_denied_area_event_for_interpretation,
     interpret_radio_transmission,
 )
 from gallatin_api.scenario import (
@@ -33,6 +38,7 @@ def create_app(
     readiness_checker: ReadinessChecker | None = None,
     scenario_provider: ScenarioProvider | None = None,
     event_ledger_store: EventLedgerStore | None = None,
+    proposed_interpretation_store: ProposedInterpretationStore | None = None,
     transcription_pipeline: TranscriptionPipeline | None = None,
 ) -> FastAPI:
     settings = get_settings()
@@ -44,6 +50,9 @@ def create_app(
     checker = readiness_checker or check_postgis
     provide_scenario = scenario_provider or load_kaohsiung_tainan_logistics_picture
     ledger_store = event_ledger_store or PostgresEventLedgerStore(settings.database_url)
+    proposed_store = proposed_interpretation_store or PostgresProposedInterpretationStore(
+        settings.database_url
+    )
     radio_transcription = transcription_pipeline or FixtureTranscriptionPipeline()
 
     app.add_middleware(
@@ -84,12 +93,17 @@ def create_app(
     @app.post(
         "/events/accepted",
         response_model=AcceptedDomainEvent,
+        response_model_exclude_none=True,
         status_code=201,
     )
     def accept_event(event: AcceptedDomainEvent) -> AcceptedDomainEvent:
         return ledger_store.append(event)
 
-    @app.get("/events/accepted", response_model=list[AcceptedDomainEvent])
+    @app.get(
+        "/events/accepted",
+        response_model=list[AcceptedDomainEvent],
+        response_model_exclude_none=True,
+    )
     def accepted_events() -> list[AcceptedDomainEvent]:
         return ledger_store.list_events()
 
@@ -113,8 +127,63 @@ def create_app(
         interpreted = interpret_radio_transmission(transmission)
         for event in interpreted.accepted_events:
             ledger_store.append(event)
+        for interpretation in interpreted.interpretations:
+            if isinstance(interpretation, ReviewRequiredRadioInterpretation):
+                proposed_store.upsert(interpretation)
 
         return transmission.model_copy(update={"interpretations": interpreted.interpretations})
+
+    @app.post(
+        "/interpretations/proposed/{interpretation_id}/accept",
+        response_model=AcceptedDomainEvent,
+        response_model_exclude_none=True,
+        status_code=201,
+    )
+    def accept_proposed_interpretation(interpretation_id: str) -> AcceptedDomainEvent:
+        try:
+            interpretation = proposed_store.get(interpretation_id)
+        except ProposedInterpretationNotFound as exc:
+            raise HTTPException(
+                status_code=404,
+                detail="Proposed Interpretation not found",
+            ) from exc
+
+        if interpretation.status == "rejected":
+            raise HTTPException(
+                status_code=409,
+                detail="Rejected Proposed Interpretation cannot be accepted",
+            )
+
+        event = accepted_denied_area_event_for_interpretation(interpretation)
+        ledger_store.append(event)
+        proposed_store.mark_accepted(interpretation_id, event.event_id)
+        return event
+
+    @app.post(
+        "/interpretations/proposed/{interpretation_id}/reject",
+        response_model=ReviewRequiredRadioInterpretation,
+    )
+    def reject_proposed_interpretation(interpretation_id: str) -> ReviewRequiredRadioInterpretation:
+        try:
+            return proposed_store.mark_rejected(interpretation_id)
+        except ProposedInterpretationNotFound as exc:
+            raise HTTPException(
+                status_code=404,
+                detail="Proposed Interpretation not found",
+            ) from exc
+
+    @app.get(
+        "/interpretations/proposed/{interpretation_id}",
+        response_model=ReviewRequiredRadioInterpretation,
+    )
+    def proposed_interpretation(interpretation_id: str) -> ReviewRequiredRadioInterpretation:
+        try:
+            return proposed_store.get(interpretation_id)
+        except ProposedInterpretationNotFound as exc:
+            raise HTTPException(
+                status_code=404,
+                detail="Proposed Interpretation not found",
+            ) from exc
 
     return app
 

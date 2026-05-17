@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from gallatin_api.event_ledger import InMemoryEventLedgerStore
 from gallatin_api.main import create_app
+from gallatin_api.radio import InMemoryProposedInterpretationStore
 
 
 def test_prerecorded_tactical_radio_audio_transcribes_with_source_metadata() -> None:
@@ -116,3 +117,160 @@ def test_retransmitting_seeded_radio_clip_does_not_duplicate_auto_accepted_event
     assert [event["event_id"] for event in accepted_events] == [
         "evt-rt-lognet-1-mule-2-checkpoint-slate-position-update"
     ]
+
+
+def test_seeded_hazard_radio_transmission_creates_review_required_interpretation_without_changing_picture() -> None:
+    ledger_store = InMemoryEventLedgerStore()
+    proposed_store = InMemoryProposedInterpretationStore()
+    client = TestClient(
+        create_app(
+            event_ledger_store=ledger_store,
+            proposed_interpretation_store=proposed_store,
+        )
+    )
+
+    transmission_response = client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-route-dagger-hazard"},
+    )
+
+    assert transmission_response.status_code == 201
+    transmission = transmission_response.json()
+    assert transmission["interpretations"] == [
+        {
+            "interpretation_id": "interp-rt-lognet-1-nomad-6-route-dagger-hazard",
+            "kind": "review_required",
+            "domain_event_id": None,
+            "status": "pending",
+            "summary": "Nomad 6 reports a possible route hazard near Checkpoint Slate.",
+            "extracted_callsigns": ["Hammer 4", "Nomad 6"],
+            "proposed_hazard": {
+                "hazard_type": "possible_ied",
+                "route_name": "Route Dagger",
+                "location_name": "Checkpoint Slate",
+                "center": {
+                    "latitude": 22.812,
+                    "longitude": 120.318,
+                },
+                "buffer_radius_meters": 750,
+                "buffer_rule": "possible_ied hazards require a 750m denied-area buffer",
+            },
+        }
+    ]
+
+    ledger_response = client.get("/events/accepted")
+
+    assert ledger_response.status_code == 200
+    assert ledger_response.json() == []
+
+    picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert picture_response.status_code == 200
+    assert picture_response.json()["denied_areas"] == []
+
+
+def test_accepting_seeded_hazard_interpretation_creates_denied_area_from_buffer_rules() -> None:
+    ledger_store = InMemoryEventLedgerStore()
+    proposed_store = InMemoryProposedInterpretationStore()
+    client = TestClient(
+        create_app(
+            event_ledger_store=ledger_store,
+            proposed_interpretation_store=proposed_store,
+        )
+    )
+    interpretation_id = "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+
+    transmission_response = client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-route-dagger-hazard"},
+    )
+    accept_response = client.post(f"/interpretations/proposed/{interpretation_id}/accept")
+
+    assert transmission_response.status_code == 201
+    assert accept_response.status_code == 201
+    accepted_event = accept_response.json()
+    assert accepted_event["event_id"] == "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area"
+    assert accepted_event["event_type"] == "denied_area_created"
+    assert accepted_event["subject_id"] == "route-dagger"
+    assert accepted_event["source_callsign"] == "Nomad 6"
+    assert accepted_event["summary"] == "Denied Area created for possible IED indicators near Checkpoint Slate."
+    assert accepted_event["evidence"] == [
+        {
+            "kind": "radio_transmission",
+            "reference": "rt-lognet-1-nomad-6-route-dagger-hazard",
+        },
+        {
+            "kind": "proposed_interpretation",
+            "reference": interpretation_id,
+        },
+    ]
+    assert accepted_event["denied_area"]["denied_area_id"] == "da-route-dagger-checkpoint-slate"
+    assert accepted_event["denied_area"]["name"] == "Route Dagger Checkpoint Slate Denied Area"
+    assert accepted_event["denied_area"]["hazard_type"] == "possible_ied"
+    assert accepted_event["denied_area"]["route_name"] == "Route Dagger"
+    assert accepted_event["denied_area"]["center"] == {
+        "latitude": 22.812,
+        "longitude": 120.318,
+    }
+    assert accepted_event["denied_area"]["radius_meters"] == 750
+    assert accepted_event["denied_area"]["buffer_rule"] == (
+        "possible_ied hazards require a 750m denied-area buffer"
+    )
+    assert len(accepted_event["denied_area"]["polygon"]) == 8
+
+    picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert picture_response.status_code == 200
+    picture = picture_response.json()
+    assert picture["denied_areas"] == [accepted_event["denied_area"]]
+    assert picture["projection"]["source"] == "Event Ledger"
+    assert picture["projection"]["accepted_event_count"] == 1
+    assert len(picture["event_ledger"]) == 1
+    assert picture["event_ledger"][0]["event_id"] == accepted_event["event_id"]
+    assert picture["event_ledger"][0]["denied_area"] == accepted_event["denied_area"]
+
+
+def test_rejecting_seeded_hazard_interpretation_preserves_rejection_without_changing_picture() -> None:
+    ledger_store = InMemoryEventLedgerStore()
+    proposed_store = InMemoryProposedInterpretationStore()
+    client = TestClient(
+        create_app(
+            event_ledger_store=ledger_store,
+            proposed_interpretation_store=proposed_store,
+        )
+    )
+    interpretation_id = "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+
+    transmission_response = client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-route-dagger-hazard"},
+    )
+    reject_response = client.post(f"/interpretations/proposed/{interpretation_id}/reject")
+    preserved_response = client.get(f"/interpretations/proposed/{interpretation_id}")
+
+    assert transmission_response.status_code == 201
+    assert reject_response.status_code == 200
+    rejected_interpretation = reject_response.json()
+    assert rejected_interpretation["interpretation_id"] == interpretation_id
+    assert rejected_interpretation["kind"] == "review_required"
+    assert rejected_interpretation["status"] == "rejected"
+    assert rejected_interpretation["domain_event_id"] is None
+    assert rejected_interpretation["summary"] == (
+        "Nomad 6 reports a possible route hazard near Checkpoint Slate."
+    )
+
+    assert preserved_response.status_code == 200
+    assert preserved_response.json() == rejected_interpretation
+
+    ledger_response = client.get("/events/accepted")
+
+    assert ledger_response.status_code == 200
+    assert ledger_response.json() == []
+
+    picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert picture_response.status_code == 200
+    picture = picture_response.json()
+    assert picture["denied_areas"] == []
+    assert picture["projection"]["source"] == "Scenario Seed"
+    assert picture["projection"]["accepted_event_count"] == 0

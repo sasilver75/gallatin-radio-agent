@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import {
+  AcceptedDomainEvent,
+  DeniedArea,
   LogisticsPictureScenario,
   PrerecordedRadioClip,
   RadioTransmission,
@@ -121,6 +123,7 @@ const scenarioResponse: LogisticsPictureScenario = {
       }
     ]
   },
+  denied_areas: [],
   projection: {
     source: "Scenario Seed",
     accepted_event_count: 0
@@ -173,6 +176,100 @@ const radioTransmissionResponse: RadioTransmission = {
   ]
 };
 
+const hazardClipResponse: PrerecordedRadioClip = {
+  clip_id: "lognet-1-nomad-6-route-dagger-hazard",
+  title: "Nomad 6 Route Dagger Hazard Observation",
+  radio_channel: "LOGNET-1",
+  source_callsign: "Nomad 6",
+  recorded_at: "2026-05-17T03:19:00Z",
+  audio: {
+    filename: "lognet-1-nomad-6-route-dagger-hazard.wav",
+    content_type: "audio/wav",
+    duration_seconds: 8.6,
+    fixture_uri: "fixture://tactical-radio/lognet-1-nomad-6-route-dagger-hazard.wav"
+  }
+};
+
+const hazardTransmissionResponse: RadioTransmission = {
+  transmission_id: "rt-lognet-1-nomad-6-route-dagger-hazard",
+  clip_id: "lognet-1-nomad-6-route-dagger-hazard",
+  radio_channel: "LOGNET-1",
+  source_callsign: "Nomad 6",
+  recorded_at: "2026-05-17T03:19:00Z",
+  audio: hazardClipResponse.audio,
+  transcript:
+    "Hammer 4, Nomad 6 reports possible IED indicators on Route Dagger near Checkpoint Slate. Recommend no traffic through that bend.",
+  transcription: {
+    pipeline: "Fixture Transcription Pipeline",
+    fixture_id: "nomad-6-route-dagger-hazard-transcript"
+  },
+  interpretations: [
+    {
+      interpretation_id: "interp-rt-lognet-1-nomad-6-route-dagger-hazard",
+      kind: "review_required",
+      domain_event_id: null,
+      status: "pending",
+      summary: "Nomad 6 reports a possible route hazard near Checkpoint Slate.",
+      extracted_callsigns: ["Hammer 4", "Nomad 6"],
+      proposed_hazard: {
+        hazard_type: "possible_ied",
+        route_name: "Route Dagger",
+        location_name: "Checkpoint Slate",
+        center: {
+          latitude: 22.812,
+          longitude: 120.318
+        },
+        buffer_radius_meters: 750,
+        buffer_rule: "possible_ied hazards require a 750m denied-area buffer"
+      }
+    }
+  ]
+};
+
+const acceptedDeniedArea: DeniedArea = {
+  denied_area_id: "da-route-dagger-checkpoint-slate",
+  name: "Route Dagger Checkpoint Slate Denied Area",
+  hazard_type: "possible_ied",
+  route_name: "Route Dagger",
+  center: {
+    latitude: 22.812,
+    longitude: 120.318
+  },
+  radius_meters: 750,
+  buffer_rule: "possible_ied hazards require a 750m denied-area buffer",
+  polygon: [
+    { latitude: 22.812, longitude: 120.325311 },
+    { latitude: 22.816764, longitude: 120.323169 },
+    { latitude: 22.818737, longitude: 120.318 },
+    { latitude: 22.816764, longitude: 120.312831 },
+    { latitude: 22.812, longitude: 120.310689 },
+    { latitude: 22.807236, longitude: 120.312831 },
+    { latitude: 22.805263, longitude: 120.318 },
+    { latitude: 22.807236, longitude: 120.323169 }
+  ]
+};
+
+const acceptedDeniedAreaEvent: AcceptedDomainEvent = {
+  event_id: "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area",
+  event_type: "denied_area_created",
+  subject_id: "route-dagger",
+  source_callsign: "Nomad 6",
+  occurred_at: "2026-05-17T03:19:00Z",
+  accepted_at: "2026-05-17T03:19:00Z",
+  summary: "Denied Area created for possible IED indicators near Checkpoint Slate.",
+  evidence: [
+    {
+      kind: "radio_transmission",
+      reference: "rt-lognet-1-nomad-6-route-dagger-hazard"
+    },
+    {
+      kind: "proposed_interpretation",
+      reference: "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+    }
+  ],
+  denied_area: acceptedDeniedArea
+};
+
 const scenarioAfterRadioTransmissionResponse: LogisticsPictureScenario = {
   ...scenarioResponse,
   projection: {
@@ -200,6 +297,16 @@ const scenarioAfterRadioTransmissionResponse: LogisticsPictureScenario = {
       }
     }
   ]
+};
+
+const scenarioAfterHazardAcceptedResponse: LogisticsPictureScenario = {
+  ...scenarioResponse,
+  denied_areas: [acceptedDeniedArea],
+  projection: {
+    source: "Event Ledger",
+    accepted_event_count: 1
+  },
+  event_ledger: [acceptedDeniedAreaEvent]
 };
 
 describe("App", () => {
@@ -327,7 +434,11 @@ describe("App", () => {
       expect(screen.getByText("Mule 2 Checkpoint Slate Position Update")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Transmit to LOGNET-1" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Transmit Mule 2 Checkpoint Slate Position Update to LOGNET-1"
+      })
+    );
 
     await waitFor(() => {
       expect(
@@ -357,7 +468,11 @@ describe("App", () => {
       expect(screen.getByText("Mule 2 Checkpoint Slate Position Update")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Transmit to LOGNET-1" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Transmit Mule 2 Checkpoint Slate Position Update to LOGNET-1"
+      })
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Auto-accepted Position Update")).toBeInTheDocument();
@@ -377,6 +492,52 @@ describe("App", () => {
     });
     expect(scenarioFetches).toHaveLength(2);
   });
+
+  it("presents review-required hazard evidence and applies accepted Denied Areas", async () => {
+    mockApiFetch({
+      prerecordedClips: [hazardClipResponse],
+      transmission: hazardTransmissionResponse,
+      scenarioAfterAcceptedInterpretation: scenarioAfterHazardAcceptedResponse
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Nomad 6 Route Dagger Hazard Observation")).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Transmit Nomad 6 Route Dagger Hazard Observation to LOGNET-1"
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Review-Required Hazard Observation")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Nomad 6 / LOGNET-1")).toBeInTheDocument();
+    expect(screen.getByText(hazardTransmissionResponse.transcript)).toBeInTheDocument();
+    expect(screen.getByText("Nomad 6 reports a possible route hazard near Checkpoint Slate.")).toBeInTheDocument();
+    expect(screen.getByText("Route Dagger near Checkpoint Slate")).toBeInTheDocument();
+    expect(screen.getByText("750m buffer")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject Hazard" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Accept Denied Area" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Route Dagger Checkpoint Slate Denied Area")).toBeInTheDocument();
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/interpretations/proposed/interp-rt-lognet-1-nomad-6-route-dagger-hazard/accept",
+      {
+        method: "POST"
+      }
+    );
+    expect(screen.getByText("Event Ledger projection: 1 accepted event.")).toBeInTheDocument();
+    expect(screen.getByText("Denied Area created for possible IED indicators near Checkpoint Slate.")).toBeInTheDocument();
+  });
 });
 
 function mockApiFetch({
@@ -385,20 +546,25 @@ function mockApiFetch({
   scenario = scenarioResponse,
   scenarioStatus = 200,
   scenarioAfterTransmission,
+  scenarioAfterAcceptedInterpretation,
   prerecordedClips = prerecordedClipsResponse,
-  transmission = radioTransmissionResponse
+  transmission = radioTransmissionResponse,
+  acceptedInterpretationEvent = acceptedDeniedAreaEvent
 }: {
   readiness?: ReadinessResponse;
   readinessStatus?: number;
   scenario?: LogisticsPictureScenario;
   scenarioStatus?: number;
   scenarioAfterTransmission?: LogisticsPictureScenario;
+  scenarioAfterAcceptedInterpretation?: LogisticsPictureScenario;
   prerecordedClips?: PrerecordedRadioClip[];
   transmission?: RadioTransmission;
+  acceptedInterpretationEvent?: AcceptedDomainEvent;
 } = {}) {
   let transmissionAccepted = false;
+  let interpretationAccepted = false;
 
-  vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
 
     if (url === "http://localhost:8000/readyz") {
@@ -406,6 +572,10 @@ function mockApiFetch({
     }
 
     if (url === "http://localhost:8000/scenarios/kaohsiung-tainan/logistics-picture") {
+      if (interpretationAccepted && scenarioAfterAcceptedInterpretation) {
+        return Promise.resolve(jsonResponse(scenarioAfterAcceptedInterpretation, scenarioStatus));
+      }
+
       if (transmissionAccepted && scenarioAfterTransmission) {
         return Promise.resolve(jsonResponse(scenarioAfterTransmission, scenarioStatus));
       }
@@ -420,6 +590,14 @@ function mockApiFetch({
     if (url === "http://localhost:8000/radio/transmissions") {
       transmissionAccepted = true;
       return Promise.resolve(jsonResponse(transmission, 201));
+    }
+
+    if (
+      url === "http://localhost:8000/interpretations/proposed/interp-rt-lognet-1-nomad-6-route-dagger-hazard/accept" &&
+      init?.method === "POST"
+    ) {
+      interpretationAccepted = true;
+      return Promise.resolve(jsonResponse(acceptedInterpretationEvent, 201));
     }
 
     return Promise.reject(new Error(`Unhandled fetch to ${url}`));

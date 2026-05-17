@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from gallatin_api.event_ledger import AcceptedDomainEvent
+from gallatin_api.event_ledger import AcceptedDomainEvent, DeniedArea
 
 
 SupplyStatus = Literal["green", "amber", "red", "black"]
@@ -102,6 +102,7 @@ class LogisticsPictureScenario(BaseModel):
     locations: list[NamedLocation]
     supported_units: list[SupportedUnit]
     supply_convoy: SupplyConvoy
+    denied_areas: list[DeniedArea] = Field(default_factory=list)
     projection: ProjectionMetadata = Field(default_factory=ProjectionMetadata)
     event_ledger: list[AcceptedDomainEvent] = Field(default_factory=list)
 
@@ -130,6 +131,8 @@ def project_logistics_picture(
     for event in accepted_events:
         if event.event_type == "position_update":
             apply_position_update(projected, event)
+        elif event.event_type == "denied_area_created":
+            apply_denied_area(projected, event)
 
     projected.event_ledger = accepted_events
     projected.projection = ProjectionMetadata(
@@ -143,6 +146,9 @@ def apply_position_update(
     scenario: LogisticsPictureScenario,
     event: AcceptedDomainEvent,
 ) -> None:
+    if event.position is None:
+        return
+
     location_id = projected_location_id_for_subject(scenario, event.subject_id)
     if location_id is None:
         return
@@ -155,6 +161,20 @@ def apply_position_update(
             )
             location.description = "Projected from accepted Position Update."
             return
+
+
+def apply_denied_area(
+    scenario: LogisticsPictureScenario,
+    event: AcceptedDomainEvent,
+) -> None:
+    if event.denied_area is None:
+        return
+
+    for denied_area in scenario.denied_areas:
+        if denied_area.denied_area_id == event.denied_area.denied_area_id:
+            return
+
+    scenario.denied_areas.append(event.denied_area)
 
 
 def projected_location_id_for_subject(

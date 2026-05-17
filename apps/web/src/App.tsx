@@ -9,10 +9,13 @@ import {
   PrerecordedRadioClip,
   RadioTransmission,
   ReadinessResponse,
+  ReviewRequiredRadioInterpretation,
   SupplyStatus,
+  acceptProposedInterpretation,
   fetchLogisticsPicture,
   fetchPrerecordedRadioClips,
   fetchReadiness,
+  rejectProposedInterpretation,
   transmitPrerecordedRadioClip
 } from "./api";
 import "./App.css";
@@ -37,6 +40,14 @@ type TransmissionLoadState =
   | { kind: "idle" }
   | { kind: "transcribing" }
   | { kind: "ready"; transmission: RadioTransmission }
+  | { kind: "error"; message: string };
+
+type ReviewActionState =
+  | { kind: "idle" }
+  | {
+      kind: "working";
+      interpretationId: string;
+    }
   | { kind: "error"; message: string };
 
 type MapEntity = {
@@ -65,6 +76,9 @@ function App() {
     kind: "loading"
   });
   const [transmissionState, setTransmissionState] = useState<TransmissionLoadState>({
+    kind: "idle"
+  });
+  const [reviewActionState, setReviewActionState] = useState<ReviewActionState>({
     kind: "idle"
   });
 
@@ -115,6 +129,7 @@ function App() {
 
   function transmitClip(clipId: string) {
     setTransmissionState({ kind: "transcribing" });
+    setReviewActionState({ kind: "idle" });
 
     transmitPrerecordedRadioClip(clipId)
       .then((transmission) => {
@@ -136,6 +151,87 @@ function App() {
           message: error instanceof Error ? error.message : "Unknown transcription error"
         });
       });
+  }
+
+  function acceptReviewRequiredInterpretation(interpretationId: string) {
+    setReviewActionState({
+      kind: "working",
+      interpretationId
+    });
+
+    acceptProposedInterpretation(interpretationId)
+      .then((event) => {
+        updateReviewInterpretation(interpretationId, {
+          domain_event_id: event.event_id,
+          status: "accepted"
+        });
+        return fetchLogisticsPicture();
+      })
+      .then((picture) => {
+        setPictureState({ kind: "ready", picture });
+        setReviewActionState({ kind: "idle" });
+      })
+      .catch((error: unknown) => {
+        setReviewActionState({
+          kind: "error",
+          message:
+            error instanceof Error ? error.message : "Unknown Proposed Interpretation accept error"
+        });
+      });
+  }
+
+  function rejectReviewRequiredInterpretation(interpretationId: string) {
+    setReviewActionState({
+      kind: "working",
+      interpretationId
+    });
+
+    rejectProposedInterpretation(interpretationId)
+      .then((interpretation) => {
+        updateReviewInterpretation(interpretationId, {
+          domain_event_id: interpretation.domain_event_id,
+          status: interpretation.status
+        });
+        setReviewActionState({ kind: "idle" });
+      })
+      .catch((error: unknown) => {
+        setReviewActionState({
+          kind: "error",
+          message:
+            error instanceof Error ? error.message : "Unknown Proposed Interpretation reject error"
+        });
+      });
+  }
+
+  function updateReviewInterpretation(
+    interpretationId: string,
+    update: Pick<ReviewRequiredRadioInterpretation, "domain_event_id" | "status">
+  ) {
+    setTransmissionState((current) => {
+      if (current.kind !== "ready") {
+        return current;
+      }
+
+      return {
+        kind: "ready",
+        transmission: {
+          ...current.transmission,
+          interpretations: current.transmission.interpretations.map((interpretation) => {
+            if (
+              interpretation.kind !== "review_required" ||
+              interpretation.interpretation_id !== interpretationId
+            ) {
+              return interpretation;
+            }
+
+            return {
+              ...interpretation,
+              ...update
+            };
+          })
+        }
+      };
+    });
   }
 
   useEffect(() => {
@@ -183,6 +279,9 @@ function App() {
         pictureState={pictureState}
         clipsState={clipsState}
         transmissionState={transmissionState}
+        reviewActionState={reviewActionState}
+        onAcceptInterpretation={acceptReviewRequiredInterpretation}
+        onRejectInterpretation={rejectReviewRequiredInterpretation}
         onTransmitClip={transmitClip}
       />
     </main>
@@ -215,6 +314,12 @@ function SupplyOfficerView({ pictureState }: { pictureState: PictureLoadState })
   const routePoints = getRouteLocations(picture).map((location) =>
     toSvgPoint(location.coordinate, picture.area_of_operations.bounds)
   );
+  const deniedAreaPolygons = picture.denied_areas.map((deniedArea) => ({
+    ...deniedArea,
+    points: deniedArea.polygon
+      .map((coordinate) => toSvgPoint(coordinate, picture.area_of_operations.bounds))
+      .join(" ")
+  }));
   const polygonPoints = picture.area_of_operations.polygon
     .map((coordinate) => toSvgPoint(coordinate, picture.area_of_operations.bounds))
     .join(" ");
@@ -235,6 +340,13 @@ function SupplyOfficerView({ pictureState }: { pictureState: PictureLoadState })
           {routePoints.length > 1 ? (
             <polyline className="route-line" points={routePoints.join(" ")} />
           ) : null}
+          {deniedAreaPolygons.map((deniedArea) => (
+            <polygon
+              className="denied-area-polygon"
+              key={deniedArea.denied_area_id}
+              points={deniedArea.points}
+            />
+          ))}
         </svg>
 
         {entities.map((entity) => {
@@ -364,6 +476,22 @@ function ScenarioStatusDetails({ pictureState }: { pictureState: PictureLoadStat
           ))}
         </ul>
       </div>
+
+      {picture.denied_areas.length > 0 ? (
+        <div className="status-section">
+          <h3>Denied Areas</h3>
+          <ul className="denied-area-list">
+            {picture.denied_areas.map((deniedArea) => (
+              <li key={deniedArea.denied_area_id}>
+                <strong>{deniedArea.name}</strong>
+                <span>
+                  {deniedArea.route_name} / {deniedArea.radius_meters}m buffer
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -377,11 +505,17 @@ function WorkspacePanels({
   pictureState,
   clipsState,
   transmissionState,
+  reviewActionState,
+  onAcceptInterpretation,
+  onRejectInterpretation,
   onTransmitClip
 }: {
   pictureState: PictureLoadState;
   clipsState: PrerecordedClipsLoadState;
   transmissionState: TransmissionLoadState;
+  reviewActionState: ReviewActionState;
+  onAcceptInterpretation: (interpretationId: string) => void;
+  onRejectInterpretation: (interpretationId: string) => void;
   onTransmitClip: (clipId: string) => void;
 }) {
   const panels = useMemo(() => {
@@ -410,7 +544,15 @@ function WorkspacePanels({
       },
       {
         title: "Evidence Pane",
-        body: <EvidencePane agentCallsign={picture.agent_callsign} transmissionState={transmissionState} />
+        body: (
+          <EvidencePane
+            agentCallsign={picture.agent_callsign}
+            transmissionState={transmissionState}
+            reviewActionState={reviewActionState}
+            onAcceptInterpretation={onAcceptInterpretation}
+            onRejectInterpretation={onRejectInterpretation}
+          />
+        )
       },
       {
         title: "Event Ledger",
@@ -425,7 +567,15 @@ function WorkspacePanels({
         body: `${picture.supply_convoy.callsign} remains in ${picture.supply_convoy.movement_status}.`
       }
     ] satisfies WorkspacePanel[];
-  }, [clipsState, onTransmitClip, pictureState, transmissionState]);
+  }, [
+    clipsState,
+    onAcceptInterpretation,
+    onRejectInterpretation,
+    onTransmitClip,
+    pictureState,
+    reviewActionState,
+    transmissionState
+  ]);
 
   return (
     <section className="panel-strip" aria-label="Workspace lanes">
@@ -473,6 +623,7 @@ function FieldRadioConsole({
           </span>
           <small>Audio file: {clip.audio.filename}</small>
           <button
+            aria-label={`Transmit ${clip.title} to ${clip.radio_channel}`}
             disabled={transmissionState.kind === "transcribing"}
             onClick={() => onTransmitClip(clip.clip_id)}
             type="button"
@@ -487,10 +638,16 @@ function FieldRadioConsole({
 
 function EvidencePane({
   agentCallsign,
-  transmissionState
+  transmissionState,
+  reviewActionState,
+  onAcceptInterpretation,
+  onRejectInterpretation
 }: {
   agentCallsign: string;
   transmissionState: TransmissionLoadState;
+  reviewActionState: ReviewActionState;
+  onAcceptInterpretation: (interpretationId: string) => void;
+  onRejectInterpretation: (interpretationId: string) => void;
 }) {
   if (transmissionState.kind === "idle") {
     return <p>{agentCallsign} has no Tactical Radio Audio evidence attached to this seed.</p>;
@@ -518,15 +675,82 @@ function EvidencePane({
         <ul className="interpretation-list">
           {transmission.interpretations.map((interpretation) => (
             <li key={interpretation.interpretation_id}>
-              <strong>Auto-accepted Position Update</strong>
-              <span>{interpretation.summary}</span>
-              <small>{interpretation.extracted_callsigns.join(", ")}</small>
-              <small>{interpretation.domain_event_id}</small>
+              {interpretation.kind === "auto_accepted" ? (
+                <>
+                  <strong>Auto-accepted Position Update</strong>
+                  <span>{interpretation.summary}</span>
+                  <small>{interpretation.extracted_callsigns.join(", ")}</small>
+                  <small>{interpretation.domain_event_id}</small>
+                </>
+              ) : (
+                <ReviewRequiredInterpretation
+                  interpretation={interpretation}
+                  reviewActionState={reviewActionState}
+                  onAcceptInterpretation={onAcceptInterpretation}
+                  onRejectInterpretation={onRejectInterpretation}
+                />
+              )}
             </li>
           ))}
         </ul>
       ) : null}
     </div>
+  );
+}
+
+function ReviewRequiredInterpretation({
+  interpretation,
+  reviewActionState,
+  onAcceptInterpretation,
+  onRejectInterpretation
+}: {
+  interpretation: ReviewRequiredRadioInterpretation;
+  reviewActionState: ReviewActionState;
+  onAcceptInterpretation: (interpretationId: string) => void;
+  onRejectInterpretation: (interpretationId: string) => void;
+}) {
+  const actionInFlight =
+    reviewActionState.kind === "working" &&
+    reviewActionState.interpretationId === interpretation.interpretation_id;
+
+  return (
+    <>
+      <strong>Review-Required Hazard Observation</strong>
+      <span>{interpretation.summary}</span>
+      <small>
+        {interpretation.proposed_hazard.route_name} near{" "}
+        {interpretation.proposed_hazard.location_name}
+      </small>
+      <small>{interpretation.proposed_hazard.buffer_radius_meters}m buffer</small>
+      <small>{interpretation.extracted_callsigns.join(", ")}</small>
+      {interpretation.status === "pending" ? (
+        <div className="interpretation-actions">
+          <button
+            disabled={actionInFlight}
+            onClick={() => onAcceptInterpretation(interpretation.interpretation_id)}
+            type="button"
+          >
+            Accept Denied Area
+          </button>
+          <button
+            disabled={actionInFlight}
+            onClick={() => onRejectInterpretation(interpretation.interpretation_id)}
+            type="button"
+          >
+            Reject Hazard
+          </button>
+        </div>
+      ) : (
+        <small>
+          {interpretation.status === "accepted"
+            ? `Accepted into Event Ledger: ${interpretation.domain_event_id}`
+            : "Rejected by Logistics Watch Officer"}
+        </small>
+      )}
+      {reviewActionState.kind === "error" ? (
+        <small className="failure">{reviewActionState.message}</small>
+      ) : null}
+    </>
   );
 }
 
