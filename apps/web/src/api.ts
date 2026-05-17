@@ -97,6 +97,23 @@ export type DeniedArea = {
   polygon: Coordinate[];
 };
 
+export type RouteEvaluation = {
+  status: "avoids_denied_areas" | "conflicts_with_denied_area";
+  conflicting_denied_area_ids: string[];
+};
+
+export type GeneratedRouteVariant = {
+  route_id: string;
+  name: string;
+  summary: string;
+  source: string;
+  requested_avoid_polygon_count: number;
+  distance_km: number;
+  estimated_minutes: number;
+  geometry: Coordinate[];
+  evaluation: RouteEvaluation;
+};
+
 export type EventEvidence = {
   kind: string;
   reference: string;
@@ -197,6 +214,7 @@ export type LogisticsPictureScenario = {
   supported_units: SupportedUnit[];
   supply_convoy: SupplyConvoy;
   denied_areas: DeniedArea[];
+  generated_routes: GeneratedRouteVariant[];
   projection: ProjectionMetadata;
   event_ledger: AcceptedDomainEvent[];
 };

@@ -85,6 +85,23 @@ class SupplyConvoy(BaseModel):
     supply_load: list[SupplyLoadItem]
 
 
+class RouteEvaluation(BaseModel):
+    status: Literal["avoids_denied_areas", "conflicts_with_denied_area"]
+    conflicting_denied_area_ids: list[str]
+
+
+class GeneratedRouteVariant(BaseModel):
+    route_id: str
+    name: str
+    summary: str
+    source: str
+    requested_avoid_polygon_count: int
+    distance_km: float
+    estimated_minutes: int
+    geometry: list[Coordinate]
+    evaluation: RouteEvaluation
+
+
 class ProjectionMetadata(BaseModel):
     source: str = "Scenario Seed"
     accepted_event_count: int = 0
@@ -103,6 +120,7 @@ class LogisticsPictureScenario(BaseModel):
     supported_units: list[SupportedUnit]
     supply_convoy: SupplyConvoy
     denied_areas: list[DeniedArea] = Field(default_factory=list)
+    generated_routes: list[GeneratedRouteVariant] = Field(default_factory=list)
     projection: ProjectionMetadata = Field(default_factory=ProjectionMetadata)
     event_ledger: list[AcceptedDomainEvent] = Field(default_factory=list)
 
@@ -139,6 +157,7 @@ def project_logistics_picture(
         source="Event Ledger" if accepted_events else "Scenario Seed",
         accepted_event_count=len(accepted_events),
     )
+    projected.generated_routes = generate_route_variants(projected)
     return projected
 
 
@@ -189,3 +208,99 @@ def projected_location_id_for_subject(
             return unit.location_id
 
     return None
+
+
+def generate_route_variants(scenario: LogisticsPictureScenario) -> list[GeneratedRouteVariant]:
+    if not scenario.denied_areas:
+        return []
+
+    locations = {location.id: location for location in scenario.locations}
+    lsa = locations.get("lsa-south-dock")
+    lrp = locations.get("lrp-bravo")
+    checkpoint = locations.get("checkpoint-slate")
+    if lsa is None or lrp is None or checkpoint is None:
+        return []
+
+    baseline_geometry = [lsa.coordinate, checkpoint.coordinate, lrp.coordinate]
+    western_bypass_geometry = [
+        lsa.coordinate,
+        Coordinate(latitude=22.704, longitude=120.18),
+        Coordinate(latitude=22.822, longitude=120.168),
+        lrp.coordinate,
+    ]
+
+    return [
+        route_variant(
+            route_id="route-variant-route-dagger-baseline",
+            name="Route Dagger Baseline",
+            summary="Baseline Route Dagger from LSA South Dock to LRP Bravo through Checkpoint Slate.",
+            distance_km=31.4,
+            estimated_minutes=52,
+            geometry=baseline_geometry,
+            denied_areas=scenario.denied_areas,
+        ),
+        route_variant(
+            route_id="route-variant-route-dagger-western-bypass",
+            name="Route Dagger Western Bypass",
+            summary="Western bypass from LSA South Dock to LRP Bravo avoiding Checkpoint Slate.",
+            distance_km=36.8,
+            estimated_minutes=64,
+            geometry=western_bypass_geometry,
+            denied_areas=scenario.denied_areas,
+        ),
+    ]
+
+
+def route_variant(
+    route_id: str,
+    name: str,
+    summary: str,
+    distance_km: float,
+    estimated_minutes: int,
+    geometry: list[Coordinate],
+    denied_areas: list[DeniedArea],
+) -> GeneratedRouteVariant:
+    conflicting_denied_area_ids = [
+        denied_area.denied_area_id
+        for denied_area in denied_areas
+        if route_conflicts_with_denied_area(geometry, denied_area)
+    ]
+    status: Literal["avoids_denied_areas", "conflicts_with_denied_area"] = (
+        "conflicts_with_denied_area"
+        if conflicting_denied_area_ids
+        else "avoids_denied_areas"
+    )
+
+    return GeneratedRouteVariant(
+        route_id=route_id,
+        name=name,
+        summary=summary,
+        source="Deterministic Local Route Generator",
+        requested_avoid_polygon_count=len(denied_areas),
+        distance_km=distance_km,
+        estimated_minutes=estimated_minutes,
+        geometry=geometry,
+        evaluation=RouteEvaluation(
+            status=status,
+            conflicting_denied_area_ids=conflicting_denied_area_ids,
+        ),
+    )
+
+
+def route_conflicts_with_denied_area(
+    geometry: list[Coordinate],
+    denied_area: DeniedArea,
+) -> bool:
+    return any(
+        point_inside_denied_area(coordinate, denied_area)
+        for coordinate in geometry
+    )
+
+
+def point_inside_denied_area(
+    coordinate: Coordinate,
+    denied_area: DeniedArea,
+) -> bool:
+    latitude_delta = coordinate.latitude - denied_area.center.latitude
+    longitude_delta = coordinate.longitude - denied_area.center.longitude
+    return (latitude_delta * latitude_delta + longitude_delta * longitude_delta) <= 0.0001

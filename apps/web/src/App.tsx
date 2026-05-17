@@ -314,6 +314,12 @@ function SupplyOfficerView({ pictureState }: { pictureState: PictureLoadState })
   const routePoints = getRouteLocations(picture).map((location) =>
     toSvgPoint(location.coordinate, picture.area_of_operations.bounds)
   );
+  const generatedRouteLines = picture.generated_routes.map((route) => ({
+    ...route,
+    points: route.geometry
+      .map((coordinate) => toSvgPoint(coordinate, picture.area_of_operations.bounds))
+      .join(" ")
+  }));
   const deniedAreaPolygons = picture.denied_areas.map((deniedArea) => ({
     ...deniedArea,
     points: deniedArea.polygon
@@ -340,6 +346,13 @@ function SupplyOfficerView({ pictureState }: { pictureState: PictureLoadState })
           {routePoints.length > 1 ? (
             <polyline className="route-line" points={routePoints.join(" ")} />
           ) : null}
+          {generatedRouteLines.map((route) => (
+            <polyline
+              className={`generated-route-line ${route.evaluation.status}`}
+              key={route.route_id}
+              points={route.points}
+            />
+          ))}
           {deniedAreaPolygons.map((deniedArea) => (
             <polygon
               className="denied-area-polygon"
@@ -487,6 +500,31 @@ function ScenarioStatusDetails({ pictureState }: { pictureState: PictureLoadStat
                 <span>
                   {deniedArea.route_name} / {deniedArea.radius_meters}m buffer
                 </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {picture.generated_routes.length > 0 ? (
+        <div className="status-section">
+          <h3>Generated Route Variants</h3>
+          <ul className="generated-route-list">
+            {picture.generated_routes.map((route) => (
+              <li key={route.route_id}>
+                <div>
+                  <strong>{route.name}</strong>
+                  <span className={route.evaluation.status}>
+                    {formatRouteEvaluationStatus(route.evaluation.status)}
+                  </span>
+                </div>
+                <p>{route.summary}</p>
+                <small>
+                  {route.distance_km.toFixed(1)} km / {route.estimated_minutes} min
+                </small>
+                <small>
+                  {route.source} / {formatAvoidPolygonCount(route.requested_avoid_polygon_count)}
+                </small>
               </li>
             ))}
           </ul>
@@ -776,6 +814,14 @@ function eventLedgerPanelBody(picture: LogisticsPictureScenario) {
 
 function formatAcceptedEventCount(count: number) {
   return `${count} accepted ${count === 1 ? "event" : "events"}`;
+}
+
+function formatRouteEvaluationStatus(status: "avoids_denied_areas" | "conflicts_with_denied_area") {
+  return status === "avoids_denied_areas" ? "avoids denied areas" : "conflicts with denied area";
+}
+
+function formatAvoidPolygonCount(count: number) {
+  return `${count} avoid ${count === 1 ? "polygon" : "polygons"} requested`;
 }
 
 function ReadinessBadge({ loadState }: { loadState: ReadinessLoadState }) {

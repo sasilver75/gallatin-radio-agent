@@ -124,6 +124,7 @@ const scenarioResponse: LogisticsPictureScenario = {
     ]
   },
   denied_areas: [],
+  generated_routes: [],
   projection: {
     source: "Scenario Seed",
     accepted_event_count: 0
@@ -302,6 +303,44 @@ const scenarioAfterRadioTransmissionResponse: LogisticsPictureScenario = {
 const scenarioAfterHazardAcceptedResponse: LogisticsPictureScenario = {
   ...scenarioResponse,
   denied_areas: [acceptedDeniedArea],
+  generated_routes: [
+    {
+      route_id: "route-variant-route-dagger-baseline",
+      name: "Route Dagger Baseline",
+      summary: "Baseline Route Dagger from Test LSA Raven to Test LRP Cobalt through Checkpoint Slate.",
+      source: "Deterministic Local Route Generator",
+      requested_avoid_polygon_count: 1,
+      distance_km: 31.4,
+      estimated_minutes: 52,
+      geometry: [
+        { latitude: 22.2, longitude: 120.2 },
+        { latitude: 22.812, longitude: 120.318 },
+        { latitude: 22.7, longitude: 120.4 }
+      ],
+      evaluation: {
+        status: "conflicts_with_denied_area",
+        conflicting_denied_area_ids: ["da-route-dagger-checkpoint-slate"]
+      }
+    },
+    {
+      route_id: "route-variant-route-dagger-western-bypass",
+      name: "Route Dagger Western Bypass",
+      summary: "Western bypass from Test LSA Raven to Test LRP Cobalt avoiding Checkpoint Slate.",
+      source: "Deterministic Local Route Generator",
+      requested_avoid_polygon_count: 1,
+      distance_km: 36.8,
+      estimated_minutes: 64,
+      geometry: [
+        { latitude: 22.2, longitude: 120.2 },
+        { latitude: 22.52, longitude: 120.12 },
+        { latitude: 22.7, longitude: 120.4 }
+      ],
+      evaluation: {
+        status: "avoids_denied_areas",
+        conflicting_denied_area_ids: []
+      }
+    }
+  ],
   projection: {
     source: "Event Ledger",
     accepted_event_count: 1
@@ -537,6 +576,11 @@ describe("App", () => {
     );
     expect(screen.getByText("Event Ledger projection: 1 accepted event.")).toBeInTheDocument();
     expect(screen.getByText("Denied Area created for possible IED indicators near Checkpoint Slate.")).toBeInTheDocument();
+    expect(screen.getByText("Route Dagger Baseline")).toBeInTheDocument();
+    expect(screen.getByText("conflicts with denied area")).toBeInTheDocument();
+    expect(screen.getByText("Route Dagger Western Bypass")).toBeInTheDocument();
+    expect(screen.getByText("avoids denied areas")).toBeInTheDocument();
+    expect(screen.getByText("36.8 km / 64 min")).toBeInTheDocument();
   });
 });
 
