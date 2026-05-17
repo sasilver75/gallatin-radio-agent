@@ -86,6 +86,28 @@ export type SupplyConvoy = {
   supply_load: SupplyLoadItem[];
 };
 
+export type EventEvidence = {
+  kind: string;
+  reference: string;
+};
+
+export type AcceptedDomainEvent = {
+  event_id: string;
+  event_type: "position_update";
+  subject_id: string;
+  source_callsign: string;
+  occurred_at: string;
+  accepted_at: string;
+  summary: string;
+  evidence: EventEvidence[];
+  position: Coordinate;
+};
+
+export type ProjectionMetadata = {
+  source: string;
+  accepted_event_count: number;
+};
+
 export type LogisticsPictureScenario = {
   scenario_id: string;
   name: string;
@@ -98,6 +120,8 @@ export type LogisticsPictureScenario = {
   locations: NamedLocation[];
   supported_units: SupportedUnit[];
   supply_convoy: SupplyConvoy;
+  projection: ProjectionMetadata;
+  event_ledger: AcceptedDomainEvent[];
 };
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";

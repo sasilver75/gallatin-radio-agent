@@ -3,7 +3,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from gallatin_api.event_ledger import AcceptedDomainEvent
 
 
 SupplyStatus = Literal["green", "amber", "red", "black"]
@@ -83,6 +85,11 @@ class SupplyConvoy(BaseModel):
     supply_load: list[SupplyLoadItem]
 
 
+class ProjectionMetadata(BaseModel):
+    source: str = "Scenario Seed"
+    accepted_event_count: int = 0
+
+
 class LogisticsPictureScenario(BaseModel):
     scenario_id: str
     name: str
@@ -95,6 +102,8 @@ class LogisticsPictureScenario(BaseModel):
     locations: list[NamedLocation]
     supported_units: list[SupportedUnit]
     supply_convoy: SupplyConvoy
+    projection: ProjectionMetadata = Field(default_factory=ProjectionMetadata)
+    event_ledger: list[AcceptedDomainEvent] = Field(default_factory=list)
 
 
 DEFAULT_SCENARIO_PATH = (
@@ -110,3 +119,53 @@ def load_kaohsiung_tainan_logistics_picture(
     path: Path = DEFAULT_SCENARIO_PATH,
 ) -> LogisticsPictureScenario:
     return LogisticsPictureScenario.model_validate(json.loads(path.read_text(encoding="utf-8")))
+
+
+def project_logistics_picture(
+    scenario: LogisticsPictureScenario,
+    accepted_events: list[AcceptedDomainEvent],
+) -> LogisticsPictureScenario:
+    projected = scenario.model_copy(deep=True)
+
+    for event in accepted_events:
+        if event.event_type == "position_update":
+            apply_position_update(projected, event)
+
+    projected.event_ledger = accepted_events
+    projected.projection = ProjectionMetadata(
+        source="Event Ledger" if accepted_events else "Scenario Seed",
+        accepted_event_count=len(accepted_events),
+    )
+    return projected
+
+
+def apply_position_update(
+    scenario: LogisticsPictureScenario,
+    event: AcceptedDomainEvent,
+) -> None:
+    location_id = projected_location_id_for_subject(scenario, event.subject_id)
+    if location_id is None:
+        return
+
+    for location in scenario.locations:
+        if location.id == location_id:
+            location.coordinate = Coordinate(
+                latitude=event.position.latitude,
+                longitude=event.position.longitude,
+            )
+            location.description = "Projected from accepted Position Update."
+            return
+
+
+def projected_location_id_for_subject(
+    scenario: LogisticsPictureScenario,
+    subject_id: str,
+) -> str | None:
+    if subject_id == scenario.supply_convoy.id:
+        return scenario.supply_convoy.location_id
+
+    for unit in scenario.supported_units:
+        if subject_id == unit.id:
+            return unit.location_id
+
+    return None

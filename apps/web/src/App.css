@@ -453,6 +453,23 @@ h1 {
   margin-top: 8px;
 }
 
+.workspace-panel .panel-details {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.workspace-panel .panel-details p {
+  margin-top: 0;
+}
+
+.workspace-panel .panel-evidence {
+  color: #35423c;
+  font-size: 0.82rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1040px) {
   .workspace-grid {
     grid-template-columns: 1fr;
