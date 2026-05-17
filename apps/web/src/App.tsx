@@ -320,7 +320,7 @@ function WorkspacePanels({ pictureState }: { pictureState: PictureLoadState }) {
       },
       {
         title: "Event Ledger",
-        body: `${picture.name} is loaded as deterministic seed state.`
+        body: eventLedgerPanelBody(picture)
       },
       {
         title: "Logistics Picture",
@@ -338,11 +338,35 @@ function WorkspacePanels({ pictureState }: { pictureState: PictureLoadState }) {
       {panels.map((panel) => (
         <article className="workspace-panel" key={panel.title}>
           <h2>{panel.title}</h2>
-          <p>{panel.body}</p>
+          {typeof panel.body === "string" ? <p>{panel.body}</p> : panel.body}
         </article>
       ))}
     </section>
   );
+}
+
+function eventLedgerPanelBody(picture: LogisticsPictureScenario) {
+  const latestEvent = picture.event_ledger.at(-1);
+
+  if (!latestEvent) {
+    return <p>{picture.name} is loaded as deterministic seed state.</p>;
+  }
+
+  const evidence = latestEvent.evidence[0];
+
+  return (
+    <div className="panel-details">
+      <p>
+        Event Ledger projection: {formatAcceptedEventCount(picture.projection.accepted_event_count)}.
+      </p>
+      <p>{latestEvent.summary}</p>
+      {evidence ? <p className="panel-evidence">{evidence.reference}</p> : null}
+    </div>
+  );
+}
+
+function formatAcceptedEventCount(count: number) {
+  return `${count} accepted ${count === 1 ? "event" : "events"}`;
 }
 
 function ReadinessBadge({ loadState }: { loadState: ReadinessLoadState }) {

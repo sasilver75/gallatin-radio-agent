@@ -1,10 +1,11 @@
 from fastapi.testclient import TestClient
 
+from gallatin_api.event_ledger import InMemoryEventLedgerStore
 from gallatin_api.main import create_app
 
 
 def test_kaohsiung_tainan_logistics_picture_returns_seed_entities() -> None:
-    client = TestClient(create_app())
+    client = TestClient(create_app(event_ledger_store=InMemoryEventLedgerStore()))
 
     response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
 

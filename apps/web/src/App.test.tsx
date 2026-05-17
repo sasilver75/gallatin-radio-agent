@@ -115,7 +115,12 @@ const scenarioResponse: LogisticsPictureScenario = {
         destination_unit_id: "raven"
       }
     ]
-  }
+  },
+  projection: {
+    source: "Scenario Seed",
+    accepted_event_count: 0
+  },
+  event_ledger: []
 };
 
 describe("App", () => {
@@ -190,6 +195,48 @@ describe("App", () => {
     expect(screen.getAllByText("Logistics Picture fetch failed with HTTP 500")).toHaveLength(2);
     expect(screen.queryByText("Test LSA Raven")).not.toBeInTheDocument();
     expect(screen.queryByText("Raven")).not.toBeInTheDocument();
+  });
+
+  it("renders projected Event Ledger context from the Logistics Picture response", async () => {
+    mockApiFetch({
+      scenario: {
+        ...scenarioResponse,
+        projection: {
+          source: "Event Ledger",
+          accepted_event_count: 1
+        },
+        event_ledger: [
+          {
+            event_id: "evt-hauler-8-position-checkpoint-slate",
+            event_type: "position_update",
+            subject_id: "hauler-8",
+            source_callsign: "Hauler 8",
+            occurred_at: "2026-05-17T03:12:00Z",
+            accepted_at: "2026-05-17T03:14:00Z",
+            summary: "Hauler 8 reports passing Checkpoint Slate.",
+            evidence: [
+              {
+                kind: "radio_transmission",
+                reference: "TESTNET-7 transmission 004"
+              }
+            ],
+            position: {
+              latitude: 22.64,
+              longitude: 120.42
+            }
+          }
+        ]
+      } as LogisticsPictureScenario
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Event Ledger projection: 1 accepted event.")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Hauler 8 reports passing Checkpoint Slate.")).toBeInTheDocument();
+    expect(screen.getByText("TESTNET-7 transmission 004")).toBeInTheDocument();
   });
 });
 
