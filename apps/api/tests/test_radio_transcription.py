@@ -471,6 +471,148 @@ def test_accepted_operational_changes_regenerate_executable_coa_from_route_and_i
     )
 
 
+def test_coa_approval_applies_selected_route_and_logpac_only_after_operator_action() -> None:
+    client = coa_decision_test_client()
+    build_nomad_route_dagger_coa(client)
+
+    proposed_picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert proposed_picture_response.status_code == 200
+    proposed_picture = proposed_picture_response.json()
+    proposed_coa = proposed_picture["executable_coas"][0]
+    assert proposed_coa["coa_id"] == "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    assert proposed_coa["decision_status"] == "proposed"
+    assert proposed_coa["decision_event_id"] is None
+    assert proposed_picture["supply_convoy"]["movement_status"] == "Proposed Movement Status"
+    assert proposed_picture["supply_convoy"]["selected_route_variant_id"] is None
+    assert proposed_picture["supply_convoy"]["selected_route_name"] is None
+    assert proposed_picture["supply_convoy"]["supply_load"] == [
+        {
+            "tracked_supply": "JP-8",
+            "class_of_supply": "Class III",
+            "quantity": 1200.0,
+            "unit": "gal",
+            "destination_unit_id": "viper",
+        },
+        {
+            "tracked_supply": "155mm HE",
+            "class_of_supply": "Class V",
+            "quantity": 96.0,
+            "unit": "rd",
+            "destination_unit_id": "archer",
+        },
+        {
+            "tracked_supply": "Meals",
+            "class_of_supply": "Class I",
+            "quantity": 800.0,
+            "unit": "ea",
+            "destination_unit_id": "nomad",
+        },
+    ]
+
+    approval_response = client.post(
+        "/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/approve"
+    )
+
+    assert approval_response.status_code == 201
+    approval_event = approval_response.json()
+    assert approval_event["event_id"] == (
+        "evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-approval"
+    )
+    assert approval_event["event_type"] == "coa_decision"
+    assert approval_event["subject_id"] == "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    assert approval_event["source_callsign"] == "Hammer 4"
+    assert approval_event["summary"] == (
+        "Hammer 4 approved Route Dagger Western Bypass / Nomad JP-8 Resupply."
+    )
+    assert approval_event["coa_decision"] == {
+        "coa_id": "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+        "decision": "approved",
+        "decided_by": "Hammer 4",
+        "movement_id": "mov-route-dagger-western-bypass-nomad-jp8",
+        "selected_route_variant_id": "route-variant-route-dagger-western-bypass",
+        "selected_route_name": "Route Dagger Western Bypass",
+    }
+
+    approved_picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert approved_picture_response.status_code == 200
+    approved_picture = approved_picture_response.json()
+    approved_coa = approved_picture["executable_coas"][0]
+    assert approved_coa["decision_status"] == "approved"
+    assert approved_coa["decision_event_id"] == approval_event["event_id"]
+    assert approved_coa["movements"][0]["movement_status"] == "Approved Movement Status"
+    assert approved_picture["supply_convoy"]["movement_status"] == "Approved Movement Status"
+    assert (
+        approved_picture["supply_convoy"]["selected_route_variant_id"]
+        == "route-variant-route-dagger-western-bypass"
+    )
+    assert approved_picture["supply_convoy"]["selected_route_name"] == "Route Dagger Western Bypass"
+    assert approved_picture["supply_convoy"]["route_summary"] == "Route Dagger Western Bypass"
+    assert approved_picture["supply_convoy"]["supply_load"] == [
+        {
+            "tracked_supply": "JP-8",
+            "class_of_supply": "Class III",
+            "quantity": 480.0,
+            "unit": "gal",
+            "destination_unit_id": "nomad",
+        }
+    ]
+    assert [event["event_id"] for event in approved_picture["event_ledger"]] == [
+        "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area",
+        "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+        "evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-approval",
+    ]
+
+
+def test_coa_rejection_records_operator_decision_without_applying_proposed_movement() -> None:
+    client = coa_decision_test_client()
+    build_nomad_route_dagger_coa(client)
+
+    proposed_picture = client.get("/scenarios/kaohsiung-tainan/logistics-picture").json()
+    proposed_supply_convoy = proposed_picture["supply_convoy"]
+
+    rejection_response = client.post(
+        "/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/reject"
+    )
+
+    assert rejection_response.status_code == 201
+    rejection_event = rejection_response.json()
+    assert rejection_event["event_id"] == (
+        "evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-rejection"
+    )
+    assert rejection_event["event_type"] == "coa_decision"
+    assert rejection_event["subject_id"] == "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    assert rejection_event["source_callsign"] == "Hammer 4"
+    assert rejection_event["summary"] == (
+        "Hammer 4 rejected Route Dagger Western Bypass / Nomad JP-8 Resupply."
+    )
+    assert rejection_event["coa_decision"] == {
+        "coa_id": "coa-route-dagger-western-bypass-nomad-jp8-resupply",
+        "decision": "rejected",
+        "decided_by": "Hammer 4",
+    }
+
+    rejected_picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert rejected_picture_response.status_code == 200
+    rejected_picture = rejected_picture_response.json()
+    rejected_coa = rejected_picture["executable_coas"][0]
+    assert rejected_coa["decision_status"] == "rejected"
+    assert rejected_coa["decision_event_id"] == rejection_event["event_id"]
+    assert rejected_coa["movements"][0]["movement_status"] == "Proposed Movement Status"
+    assert rejected_picture["supply_convoy"]["movement_status"] == "Proposed Movement Status"
+    assert rejected_picture["supply_convoy"]["selected_route_variant_id"] is None
+    assert rejected_picture["supply_convoy"]["selected_route_name"] is None
+    assert rejected_picture["supply_convoy"]["route_summary"] == proposed_supply_convoy["route_summary"]
+    assert rejected_picture["supply_convoy"]["supply_load"] == proposed_supply_convoy["supply_load"]
+    assert [event["event_id"] for event in rejected_picture["event_ledger"]] == [
+        "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area",
+        "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+        "evt-coa-route-dagger-western-bypass-nomad-jp8-resupply-rejection",
+    ]
+
+
 def inventory_item(
     picture: dict[str, object],
     unit_id: str,
@@ -487,4 +629,28 @@ def inventory_item(
         item
         for item in unit["inventory"]
         if isinstance(item, dict) and item["tracked_supply"] == tracked_supply
+    )
+
+
+def coa_decision_test_client() -> TestClient:
+    ledger_store = InMemoryEventLedgerStore()
+    proposed_store = InMemoryProposedInterpretationStore()
+    return TestClient(
+        create_app(
+            event_ledger_store=ledger_store,
+            proposed_interpretation_store=proposed_store,
+        )
+    )
+
+
+def build_nomad_route_dagger_coa(client: TestClient) -> None:
+    hazard_interpretation_id = "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+    client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-route-dagger-hazard"},
+    )
+    client.post(f"/interpretations/proposed/{hazard_interpretation_id}/accept")
+    client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-jp8-burn-rate"},
     )

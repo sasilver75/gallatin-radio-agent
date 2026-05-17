@@ -96,6 +96,8 @@ export type SupplyConvoy = {
   location_id: string;
   movement_status: string;
   route_summary: string;
+  selected_route_variant_id: string | null;
+  selected_route_name: string | null;
   route_location_ids: string[];
   supply_load: SupplyLoadItem[];
 };
@@ -157,6 +159,8 @@ export type ExecutableCourseOfAction = {
   source_event_ids: string[];
   rationale: string;
   movements: CoaMovement[];
+  decision_status: "proposed" | "approved" | "rejected";
+  decision_event_id: string | null;
 };
 
 export type EventEvidence = {
@@ -172,9 +176,18 @@ export type SupplySignal = {
   reason: string;
 };
 
+export type CoaDecision = {
+  coa_id: string;
+  decision: "approved" | "rejected";
+  decided_by: string;
+  movement_id?: string;
+  selected_route_variant_id?: string;
+  selected_route_name?: string;
+};
+
 export type AcceptedDomainEvent = {
   event_id: string;
-  event_type: "position_update" | "denied_area_created" | "supply_signal";
+  event_type: "position_update" | "denied_area_created" | "supply_signal" | "coa_decision";
   subject_id: string;
   source_callsign: string;
   occurred_at: string;
@@ -184,6 +197,7 @@ export type AcceptedDomainEvent = {
   position?: Coordinate;
   denied_area?: DeniedArea;
   supply_signal?: SupplySignal;
+  coa_decision?: CoaDecision;
 };
 
 export type ProjectionMetadata = {
@@ -349,6 +363,32 @@ export async function rejectProposedInterpretation(
 
   if (!response.ok) {
     throw new Error(`Proposed Interpretation reject failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function approveExecutableCoa(coaId: string): Promise<AcceptedDomainEvent> {
+  const response = await fetch(`${API_BASE_URL}/coas/${coaId}/approve`, {
+    method: "POST"
+  });
+  const body = (await response.json()) as AcceptedDomainEvent;
+
+  if (!response.ok) {
+    throw new Error(`Executable COA approval failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function rejectExecutableCoa(coaId: string): Promise<AcceptedDomainEvent> {
+  const response = await fetch(`${API_BASE_URL}/coas/${coaId}/reject`, {
+    method: "POST"
+  });
+  const body = (await response.json()) as AcceptedDomainEvent;
+
+  if (!response.ok) {
+    throw new Error(`Executable COA rejection failed with HTTP ${response.status}`);
   }
 
   return body;

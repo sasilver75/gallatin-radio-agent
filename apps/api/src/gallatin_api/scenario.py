@@ -96,6 +96,8 @@ class SupplyConvoy(BaseModel):
     location_id: str
     movement_status: str
     route_summary: str
+    selected_route_variant_id: str | None = None
+    selected_route_name: str | None = None
     route_location_ids: list[str]
     supply_load: list[SupplyLoadItem]
 
@@ -146,6 +148,8 @@ class ExecutableCourseOfAction(BaseModel):
     source_event_ids: list[str]
     rationale: str
     movements: list[CoaMovement]
+    decision_status: Literal["proposed", "approved", "rejected"] = "proposed"
+    decision_event_id: str | None = None
 
 
 class ProjectionMetadata(BaseModel):
@@ -202,13 +206,14 @@ def project_logistics_picture(
         elif event.event_type == "supply_signal":
             apply_supply_signal(projected, event)
 
-    projected.event_ledger = accepted_events
     projected.projection = ProjectionMetadata(
         source="Event Ledger" if accepted_events else "Scenario Seed",
         accepted_event_count=len(accepted_events),
     )
     projected.generated_routes = generate_route_variants(projected)
     projected.executable_coas = generate_executable_coas(projected, accepted_events)
+    apply_coa_decisions(projected, accepted_events)
+    projected.event_ledger = accepted_events
     return projected
 
 
@@ -327,6 +332,72 @@ def inventory_item_for_supply_signal(
                 return item
 
     return None
+
+
+def apply_coa_decisions(
+    scenario: LogisticsPictureScenario,
+    accepted_events: list[AcceptedDomainEvent],
+) -> None:
+    for event in accepted_events:
+        if event.event_type == "coa_decision":
+            apply_coa_decision(scenario, event)
+
+
+def apply_coa_decision(
+    scenario: LogisticsPictureScenario,
+    event: AcceptedDomainEvent,
+) -> None:
+    decision = event.coa_decision
+    if decision is None:
+        return
+
+    coa = executable_coa_by_id(scenario, decision.coa_id)
+    if coa is None:
+        return
+
+    coa.decision_status = decision.decision
+    coa.decision_event_id = event.event_id
+    if decision.decision != "approved":
+        return
+
+    movement = selected_coa_movement(coa, decision.movement_id)
+    if movement is None:
+        return
+
+    movement.movement_status = "Approved Movement Status"
+    selected_route_variant_id = decision.selected_route_variant_id or movement.route_variant_id
+    selected_route_name = decision.selected_route_name or movement.route_name
+    scenario.supply_convoy.movement_status = "Approved Movement Status"
+    scenario.supply_convoy.selected_route_variant_id = selected_route_variant_id
+    scenario.supply_convoy.selected_route_name = selected_route_name
+    scenario.supply_convoy.route_summary = selected_route_name
+    scenario.supply_convoy.supply_load = [
+        SupplyLoadItem(
+            tracked_supply=item.tracked_supply,
+            class_of_supply=item.class_of_supply,
+            quantity=item.quantity,
+            unit=item.unit,
+            destination_unit_id=item.destination_unit_id,
+        )
+        for item in movement.logpac
+    ]
+
+
+def executable_coa_by_id(
+    scenario: LogisticsPictureScenario,
+    coa_id: str,
+) -> ExecutableCourseOfAction | None:
+    return next((coa for coa in scenario.executable_coas if coa.coa_id == coa_id), None)
+
+
+def selected_coa_movement(
+    coa: ExecutableCourseOfAction,
+    movement_id: str | None,
+) -> CoaMovement | None:
+    if movement_id is None:
+        return coa.movements[0] if coa.movements else None
+
+    return next((movement for movement in coa.movements if movement.movement_id == movement_id), None)
 
 
 def projected_location_id_for_subject(

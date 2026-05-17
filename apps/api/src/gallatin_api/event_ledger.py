@@ -36,9 +36,23 @@ class SupplySignal(BaseModel):
     reason: str
 
 
+class CoaDecision(BaseModel):
+    coa_id: str
+    decision: Literal["approved", "rejected"]
+    decided_by: str
+    movement_id: str | None = None
+    selected_route_variant_id: str | None = None
+    selected_route_name: str | None = None
+
+
 class AcceptedDomainEvent(BaseModel):
     event_id: str
-    event_type: Literal["position_update", "denied_area_created", "supply_signal"]
+    event_type: Literal[
+        "position_update",
+        "denied_area_created",
+        "supply_signal",
+        "coa_decision",
+    ]
     subject_id: str
     source_callsign: str
     occurred_at: datetime
@@ -48,6 +62,7 @@ class AcceptedDomainEvent(BaseModel):
     position: EventCoordinate | None = None
     denied_area: DeniedArea | None = None
     supply_signal: SupplySignal | None = None
+    coa_decision: CoaDecision | None = None
 
     @model_validator(mode="after")
     def require_event_payload(self) -> "AcceptedDomainEvent":
@@ -59,6 +74,9 @@ class AcceptedDomainEvent(BaseModel):
 
         if self.event_type == "supply_signal" and self.supply_signal is None:
             raise ValueError("supply_signal events require a supply_signal payload")
+
+        if self.event_type == "coa_decision" and self.coa_decision is None:
+            raise ValueError("coa_decision events require a coa_decision payload")
 
         return self
 
@@ -156,6 +174,7 @@ class PostgresEventLedgerStore:
                     "position": row["payload"].get("position"),
                     "denied_area": row["payload"].get("denied_area"),
                     "supply_signal": row["payload"].get("supply_signal"),
+                    "coa_decision": row["payload"].get("coa_decision"),
                 }
             )
             for row in rows
@@ -203,5 +222,8 @@ def accepted_event_payload(event: AcceptedDomainEvent) -> dict[str, object]:
 
     if event.supply_signal is not None:
         payload["supply_signal"] = event.supply_signal.model_dump()
+
+    if event.coa_decision is not None:
+        payload["coa_decision"] = event.coa_decision.model_dump()
 
     return payload
