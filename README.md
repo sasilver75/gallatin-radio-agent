@@ -14,8 +14,6 @@ It should contain:
 - Shared schema artifacts under `packages/schemas`.
 - Local app infrastructure under `infra`.
 
-It should not contain the Symphony/Codex orchestration harness. That harness may execute Linear tickets for this repo from a separate repository, but the demo app must remain runnable and understandable without the harness.
-
 ## Linear
 
 Project: Gallatin Radio Agent
@@ -46,6 +44,42 @@ Initial ticket chain:
 - `artifacts/transcripts`: captured audio/transcript material for demo exploration.
 
 The copied WAV artifact is intentionally ignored by Git because it is large. Use Git LFS, a smaller fixture, or a documented download/regeneration step before relying on audio assets in CI or hosted demos.
+
+## Local Development
+
+Prerequisites:
+
+- Docker with Compose.
+- Node.js 24+ and npm.
+- Python 3.12+ with `uv`.
+
+Install dependencies:
+
+```sh
+npm install
+uv sync --dev
+```
+
+Start the local Quarterback workspace:
+
+```sh
+npm run dev
+```
+
+The command starts PostGIS, the FastAPI backend, and the React web shell.
+
+- Web: http://localhost:5173
+- API health: http://localhost:8000/healthz
+- API readiness: http://localhost:8000/readyz
+- PostGIS: `localhost:55432`, database/user/password `quarterback`
+
+Copy `.env.example` to `.env` if you need to override local defaults.
+
+Run focused verification:
+
+```sh
+npm test
+```
 
 ## Intended Stack
 
