@@ -32,5 +32,22 @@
       "fixture_id": "nomad-6-route-dagger-hazard-transcript",
       "transcript": "Hammer 4, Nomad 6 reports possible IED indicators on Route Dagger near Checkpoint Slate. Recommend no traffic through that bend."
     }
+  },
+  {
+    "clip_id": "lognet-1-nomad-6-jp8-burn-rate",
+    "title": "Nomad 6 JP-8 Burn Rate Supply Signal",
+    "radio_channel": "LOGNET-1",
+    "source_callsign": "Nomad 6",
+    "recorded_at": "2026-05-17T03:24:00Z",
+    "audio": {
+      "filename": "lognet-1-nomad-6-jp8-burn-rate.wav",
+      "content_type": "audio/wav",
+      "duration_seconds": 7.9,
+      "fixture_uri": "fixture://tactical-radio/lognet-1-nomad-6-jp8-burn-rate.wav"
+    },
+    "transcription_fixture": {
+      "fixture_id": "nomad-6-jp8-burn-rate-transcript",
+      "transcript": "Hammer 4, Nomad 6, contact on the screen line. JP-8 burn rate is three point two times baseline; current fuel remains five one zero gallons."
+    }
   }
 ]

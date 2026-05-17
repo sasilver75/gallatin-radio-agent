@@ -100,7 +100,8 @@ const scenarioResponse: LogisticsPictureScenario = {
           unit: "gal",
           status: "red",
           days_of_supply: 0.4,
-          projected_black_time: "2026-05-17T06:00:00Z"
+          projected_black_time: "2026-05-17T06:00:00Z",
+          projection: null
         }
       ]
     }
@@ -348,6 +349,64 @@ const scenarioAfterHazardAcceptedResponse: LogisticsPictureScenario = {
   event_ledger: [acceptedDeniedAreaEvent]
 };
 
+const scenarioAfterSupplySignalResponse: LogisticsPictureScenario = {
+  ...scenarioResponse,
+  supported_units: [
+    {
+      ...scenarioResponse.supported_units[0],
+      inventory: [
+        {
+          ...scenarioResponse.supported_units[0].inventory[0],
+          quantity: 17,
+          status: "red",
+          days_of_supply: 0.9,
+          projected_black_time: "2026-05-18T00:24:00Z",
+          projection: {
+            source: "Event Ledger",
+            source_event_id: "evt-test-raven-fuel-supply-signal",
+            baseline_days_of_supply: 2.8,
+            projected_days_of_supply: 0.9,
+            baseline_daily_burn_rate: 6.1,
+            projected_daily_burn_rate: 19.4,
+            burn_rate_change: "3.2x baseline",
+            status_before: "green",
+            status_after: "red",
+            projected_black_time: "2026-05-18T00:24:00Z"
+          }
+        }
+      ]
+    }
+  ],
+  projection: {
+    source: "Event Ledger",
+    accepted_event_count: 1
+  },
+  event_ledger: [
+    {
+      event_id: "evt-test-raven-fuel-supply-signal",
+      event_type: "supply_signal",
+      subject_id: "raven",
+      source_callsign: "Raven 6",
+      occurred_at: "2026-05-17T03:24:00Z",
+      accepted_at: "2026-05-17T03:24:00Z",
+      summary: "Raven 6 reports Test Fuel burn rate at 3.2x baseline.",
+      evidence: [
+        {
+          kind: "radio_transmission",
+          reference: "rt-test-raven-fuel-supply-signal"
+        }
+      ],
+      supply_signal: {
+        unit_id: "raven",
+        tracked_supply: "Test Fuel",
+        current_quantity: 17,
+        daily_burn_rate_multiplier: 3.2,
+        reason: "contact increased screen-line fuel consumption"
+      }
+    }
+  ]
+};
+
 describe("App", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -581,6 +640,21 @@ describe("App", () => {
     expect(screen.getByText("Route Dagger Western Bypass")).toBeInTheDocument();
     expect(screen.getByText("avoids denied areas")).toBeInTheDocument();
     expect(screen.getByText("36.8 km / 64 min")).toBeInTheDocument();
+  });
+
+  it("renders Supply Signal projections with burn-rate and status-band changes", async () => {
+    mockApiFetch({ scenario: scenarioAfterSupplySignalResponse });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Projected: 0.9 DOS")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Burn rate: 3.2x baseline")).toBeInTheDocument();
+    expect(screen.getByText("Status: green to red")).toBeInTheDocument();
+    expect(screen.getByText("Projected black: 2026-05-18T00:24:00Z")).toBeInTheDocument();
+    expect(screen.getByText("Raven 6 reports Test Fuel burn rate at 3.2x baseline.")).toBeInTheDocument();
   });
 });
 

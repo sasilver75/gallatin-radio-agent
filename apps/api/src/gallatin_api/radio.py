@@ -17,6 +17,7 @@ from gallatin_api.event_ledger import (
     DeniedArea,
     EventCoordinate,
     EventEvidence,
+    SupplySignal,
 )
 
 
@@ -359,6 +360,41 @@ def interpret_radio_transmission(transmission: RadioTransmission) -> RadioInterp
             ),
         )
         return RadioInterpretationResult(interpretations=[interpretation], accepted_events=[])
+
+    if transmission.clip_id == "lognet-1-nomad-6-jp8-burn-rate":
+        event_id = "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal"
+        summary = "Nomad 6 reports JP-8 burn rate at 3.2x baseline."
+        interpretation = AutoAcceptedRadioInterpretation(
+            interpretation_id="interp-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+            kind="auto_accepted",
+            domain_event_id=event_id,
+            summary=summary,
+            extracted_callsigns=extract_callsigns(transmission.transcript),
+        )
+        accepted_at = parse_fixture_timestamp(transmission.recorded_at)
+        event = AcceptedDomainEvent(
+            event_id=event_id,
+            event_type="supply_signal",
+            subject_id="nomad",
+            source_callsign="Nomad 6",
+            occurred_at=accepted_at,
+            accepted_at=accepted_at,
+            summary=summary,
+            evidence=[
+                EventEvidence(
+                    kind="radio_transmission",
+                    reference=transmission.transmission_id,
+                )
+            ],
+            supply_signal=SupplySignal(
+                unit_id="nomad",
+                tracked_supply="JP-8",
+                current_quantity=510.0,
+                daily_burn_rate_multiplier=3.2,
+                reason="contact increased screen-line fuel consumption",
+            ),
+        )
+        return RadioInterpretationResult(interpretations=[interpretation], accepted_events=[event])
 
     return RadioInterpretationResult(interpretations=[], accepted_events=[])
 

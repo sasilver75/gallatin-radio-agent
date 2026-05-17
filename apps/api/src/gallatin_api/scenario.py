@@ -1,11 +1,12 @@
 import json
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from gallatin_api.event_ledger import AcceptedDomainEvent, DeniedArea
+from gallatin_api.event_ledger import AcceptedDomainEvent, DeniedArea, SupplySignal
 
 
 SupplyStatus = Literal["green", "amber", "red", "black"]
@@ -45,6 +46,19 @@ class NamedLocation(BaseModel):
     description: str
 
 
+class InventoryProjection(BaseModel):
+    source: str
+    source_event_id: str | None
+    baseline_days_of_supply: float | None
+    projected_days_of_supply: float | None
+    baseline_daily_burn_rate: float | None
+    projected_daily_burn_rate: float | None
+    burn_rate_change: str
+    status_before: SupplyStatus
+    status_after: SupplyStatus
+    projected_black_time: str | None
+
+
 class InventoryItem(BaseModel):
     tracked_supply: str
     class_of_supply: str
@@ -53,6 +67,7 @@ class InventoryItem(BaseModel):
     status: SupplyStatus
     days_of_supply: float | None
     projected_black_time: str | None
+    projection: InventoryProjection | None = None
 
 
 class SupportedUnit(BaseModel):
@@ -145,12 +160,15 @@ def project_logistics_picture(
     accepted_events: list[AcceptedDomainEvent],
 ) -> LogisticsPictureScenario:
     projected = scenario.model_copy(deep=True)
+    initialize_inventory_projections(projected)
 
     for event in accepted_events:
         if event.event_type == "position_update":
             apply_position_update(projected, event)
         elif event.event_type == "denied_area_created":
             apply_denied_area(projected, event)
+        elif event.event_type == "supply_signal":
+            apply_supply_signal(projected, event)
 
     projected.event_ledger = accepted_events
     projected.projection = ProjectionMetadata(
@@ -159,6 +177,27 @@ def project_logistics_picture(
     )
     projected.generated_routes = generate_route_variants(projected)
     return projected
+
+
+def initialize_inventory_projections(scenario: LogisticsPictureScenario) -> None:
+    for unit in scenario.supported_units:
+        for item in unit.inventory:
+            baseline_daily_burn_rate = daily_burn_rate(
+                quantity=item.quantity,
+                days_of_supply=item.days_of_supply,
+            )
+            item.projection = InventoryProjection(
+                source="Scenario Seed",
+                source_event_id=None,
+                baseline_days_of_supply=item.days_of_supply,
+                projected_days_of_supply=item.days_of_supply,
+                baseline_daily_burn_rate=baseline_daily_burn_rate,
+                projected_daily_burn_rate=baseline_daily_burn_rate,
+                burn_rate_change="baseline",
+                status_before=item.status,
+                status_after=item.status,
+                projected_black_time=item.projected_black_time,
+            )
 
 
 def apply_position_update(
@@ -194,6 +233,67 @@ def apply_denied_area(
             return
 
     scenario.denied_areas.append(event.denied_area)
+
+
+def apply_supply_signal(
+    scenario: LogisticsPictureScenario,
+    event: AcceptedDomainEvent,
+) -> None:
+    if event.supply_signal is None:
+        return
+
+    item = inventory_item_for_supply_signal(scenario, event.supply_signal)
+    if item is None or item.projection is None:
+        return
+
+    signal = event.supply_signal
+    baseline_days = item.projection.baseline_days_of_supply
+    baseline_daily_burn_rate = item.projection.baseline_daily_burn_rate
+    if baseline_days is None or baseline_daily_burn_rate is None:
+        return
+
+    current_quantity = signal.current_quantity
+    raw_baseline_daily_burn_rate = item.quantity / baseline_days
+    projected_daily_burn_rate = (
+        raw_baseline_daily_burn_rate * signal.daily_burn_rate_multiplier
+    )
+    projected_days = current_quantity / projected_daily_burn_rate
+    projected_status = status_for_days_of_supply(projected_days)
+    projected_black_time = format_utc_timestamp(
+        event.occurred_at + timedelta(days=projected_days)
+    )
+
+    item.quantity = current_quantity
+    item.days_of_supply = round(projected_days, 1)
+    item.projected_black_time = projected_black_time
+    item.status = projected_status
+    item.projection = InventoryProjection(
+        source="Event Ledger",
+        source_event_id=event.event_id,
+        baseline_days_of_supply=baseline_days,
+        projected_days_of_supply=round(projected_days, 1),
+        baseline_daily_burn_rate=baseline_daily_burn_rate,
+        projected_daily_burn_rate=round(projected_daily_burn_rate, 1),
+        burn_rate_change=f"{signal.daily_burn_rate_multiplier:g}x baseline",
+        status_before=item.projection.status_before,
+        status_after=projected_status,
+        projected_black_time=projected_black_time,
+    )
+
+
+def inventory_item_for_supply_signal(
+    scenario: LogisticsPictureScenario,
+    signal: SupplySignal,
+) -> InventoryItem | None:
+    for unit in scenario.supported_units:
+        if unit.id != signal.unit_id:
+            continue
+
+        for item in unit.inventory:
+            if item.tracked_supply == signal.tracked_supply:
+                return item
+
+    return None
 
 
 def projected_location_id_for_subject(
@@ -304,3 +404,35 @@ def point_inside_denied_area(
     latitude_delta = coordinate.latitude - denied_area.center.latitude
     longitude_delta = coordinate.longitude - denied_area.center.longitude
     return (latitude_delta * latitude_delta + longitude_delta * longitude_delta) <= 0.0001
+
+
+def daily_burn_rate(
+    quantity: float,
+    days_of_supply: float | None,
+) -> float | None:
+    if days_of_supply is None or days_of_supply <= 0:
+        return None
+
+    return round(quantity / days_of_supply, 1)
+
+
+def status_for_days_of_supply(days_of_supply: float) -> SupplyStatus:
+    if days_of_supply <= 0:
+        return "black"
+
+    if days_of_supply < 1:
+        return "red"
+
+    if days_of_supply < 2:
+        return "amber"
+
+    return "green"
+
+
+def format_utc_timestamp(value: datetime) -> str:
+    return (
+        value.astimezone(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )

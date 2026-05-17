@@ -463,6 +463,7 @@ function ScenarioStatusDetails({ pictureState }: { pictureState: PictureLoadStat
                     </strong>
                     <StatusPill status={item.status} />
                     {item.days_of_supply !== null ? <small>{item.days_of_supply} DOS</small> : null}
+                    <InventoryProjectionDetails item={item} />
                   </li>
                 ))}
               </ul>
@@ -873,6 +874,39 @@ function StatusPill({ status }: { status: SupplyStatus }) {
   return <span className={`status-pill ${status}`}>{status}</span>;
 }
 
+function InventoryProjectionDetails({ item }: { item: InventoryItem }) {
+  const { projection } = item;
+  if (projection === null || !shouldShowInventoryProjection(item)) {
+    return null;
+  }
+
+  return (
+    <div className="inventory-projection">
+      <small>Projected: {formatProjectionDays(projection.projected_days_of_supply)}</small>
+      <small>Burn rate: {projection.burn_rate_change}</small>
+      <small>
+        Status: {projection.status_before} to {projection.status_after}
+      </small>
+      {projection.projected_black_time !== null ? (
+        <small>Projected black: {projection.projected_black_time}</small>
+      ) : null}
+    </div>
+  );
+}
+
+function shouldShowInventoryProjection(item: InventoryItem) {
+  const { projection } = item;
+  if (projection === null) {
+    return false;
+  }
+
+  return (
+    projection.source === "Event Ledger" ||
+    projection.burn_rate_change !== "baseline" ||
+    projection.status_before !== projection.status_after
+  );
+}
+
 function buildMapEntities(picture: LogisticsPictureScenario): MapEntity[] {
   const locations = new Map(picture.locations.map((location) => [location.id, location]));
   const fixedLocations = picture.locations
@@ -953,6 +987,10 @@ function formatQuantity(quantity: number) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 1
   }).format(quantity);
+}
+
+function formatProjectionDays(daysOfSupply: number | null) {
+  return daysOfSupply === null ? "unavailable" : `${formatQuantity(daysOfSupply)} DOS`;
 }
 
 export default App;

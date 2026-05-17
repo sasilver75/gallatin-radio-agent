@@ -394,6 +394,20 @@ h1 {
   white-space: nowrap;
 }
 
+.inventory-projection {
+  background: #eef4f1;
+  border-left: 3px solid #1f7a64;
+  display: grid;
+  gap: 3px;
+  grid-column: 1 / -1;
+  padding: 7px 9px;
+}
+
+.inventory-projection small {
+  color: #33423b;
+  white-space: normal;
+}
+
 .status-pill {
   border-radius: 999px;
   color: #ffffff;
