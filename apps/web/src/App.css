@@ -470,6 +470,49 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.radio-clip {
+  border-top: 1px solid #e3e8e4;
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.radio-clip strong {
+  color: #17211d;
+  font-size: 0.92rem;
+  line-height: 1.2;
+}
+
+.radio-clip span,
+.radio-clip small {
+  color: #637069;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.radio-clip button {
+  background: #294f8f;
+  border: 0;
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 800;
+  justify-self: start;
+  margin-top: 4px;
+  padding: 7px 10px;
+}
+
+.radio-clip button:disabled {
+  background: #7c879c;
+  cursor: wait;
+}
+
+.transcript-text {
+  color: #24312c;
+  font-weight: 700;
+}
+
 @media (max-width: 1040px) {
   .workspace-grid {
     grid-template-columns: 1fr;

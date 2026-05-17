@@ -108,6 +108,38 @@ export type ProjectionMetadata = {
   accepted_event_count: number;
 };
 
+export type AudioMetadata = {
+  filename: string;
+  content_type: string;
+  duration_seconds: number;
+  fixture_uri: string;
+};
+
+export type PrerecordedRadioClip = {
+  clip_id: string;
+  title: string;
+  radio_channel: string;
+  source_callsign: string;
+  recorded_at: string;
+  audio: AudioMetadata;
+};
+
+export type TranscriptionMetadata = {
+  pipeline: string;
+  fixture_id: string;
+};
+
+export type RadioTransmission = {
+  transmission_id: string;
+  clip_id: string;
+  radio_channel: string;
+  source_callsign: string;
+  recorded_at: string;
+  audio: AudioMetadata;
+  transcript: string;
+  transcription: TranscriptionMetadata;
+};
+
 export type LogisticsPictureScenario = {
   scenario_id: string;
   name: string;
@@ -143,6 +175,32 @@ export async function fetchLogisticsPicture(): Promise<LogisticsPictureScenario>
 
   if (!response.ok) {
     throw new Error(`Logistics Picture fetch failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function fetchPrerecordedRadioClips(): Promise<PrerecordedRadioClip[]> {
+  const response = await fetch(`${API_BASE_URL}/radio/prerecorded-clips`);
+  const body = (await response.json()) as PrerecordedRadioClip[];
+
+  if (!response.ok) {
+    throw new Error(`Prerecorded Radio Clip fetch failed with HTTP ${response.status}`);
+  }
+
+  return body;
+}
+
+export async function transmitPrerecordedRadioClip(clipId: string): Promise<RadioTransmission> {
+  const response = await fetch(`${API_BASE_URL}/radio/transmissions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clip_id: clipId })
+  });
+  const body = (await response.json()) as RadioTransmission;
+
+  if (!response.ok) {
+    throw new Error(`Tactical Radio Audio transcription failed with HTTP ${response.status}`);
   }
 
   return body;
