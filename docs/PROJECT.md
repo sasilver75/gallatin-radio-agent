@@ -18,16 +18,6 @@ The app owns:
 - Executable COAs and approval/rejection.
 - Grounded Quarterback rollups and outbound audio.
 
-The app does not own:
-
-- Linear polling.
-- Agent workspace orchestration.
-- Codex app-server execution.
-- PR publishing or harness reconciliation.
-
-Those belong to the external orchestration repository.
-
 ## First Demo Thread
 
 The initial implementation thread is the Linear chain `SAM-77` through `SAM-89`. The intended shape is a set of thin vertical slices that starts with a runnable local workspace and ends with scripted scenario playback.
-

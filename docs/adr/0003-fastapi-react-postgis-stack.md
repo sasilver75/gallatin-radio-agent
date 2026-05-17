@@ -1,6 +1,6 @@
 # Use FastAPI, React, PostGIS, and MapLibre for the v1 demo
 
-The v1 demo will use a React/TypeScript frontend with a Python FastAPI backend. Python is a better fit for the geospatial, audio, routing, and LLM-orchestration work, while React/TypeScript keeps the map-first operator UI fast to build; OpenAPI will serve as the contract between the two.
+The v1 demo will use a React/TypeScript frontend with a Python FastAPI backend. Python is a better fit for the geospatial, audio, routing, and LLM-backed interpretation work, while React/TypeScript keeps the map-first operator UI fast to build; OpenAPI will serve as the contract between the two.
 
 **Consequences**
 
