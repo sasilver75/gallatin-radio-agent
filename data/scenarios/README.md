@@ -4,3 +4,4 @@ Seed scenario data and scripted playback definitions for the Kaohsiung-Tainan lo
 
 - `kaohsiung_tainan_logistics_picture.json`: baseline Logistics Picture seed state.
 - `kaohsiung_tainan_prerecorded_radio_clips.json`: Prerecorded Radio Clip fixtures and deterministic transcription outputs for local demo runs.
+- `kaohsiung_tainan_playback.json`: scripted Scenario Playback timeline for the end-to-end Quarterback demo.

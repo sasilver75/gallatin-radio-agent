@@ -81,6 +81,12 @@ Run focused verification:
 npm test
 ```
 
+## Demo Playback
+
+The web workspace includes a Scenario Playback panel backed by `data/scenarios/kaohsiung_tainan_playback.json`. `Run Playback` drives the seeded flow through the public API in order: Prerecorded Radio Clip ingestion, Proposed Interpretation review, Denied Area projection, route and inventory projection, COA Approval, grounded rollup, Draft Transmission, and Outbound Audio.
+
+Local playback uses deterministic fixtures for transcription, routing, and Outbound Audio metadata. No OpenRouteService or TTS credentials are required for the scripted local demo.
+
 ## Intended Stack
 
 See `docs/adr/0003-fastapi-react-postgis-stack.md`.

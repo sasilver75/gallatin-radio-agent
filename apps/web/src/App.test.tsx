@@ -8,7 +8,8 @@ import {
   LogisticsPictureScenario,
   PrerecordedRadioClip,
   RadioTransmission,
-  ReadinessResponse
+  ReadinessResponse,
+  ScenarioPlayback
 } from "./api";
 
 const readyResponse: ReadinessResponse = {
@@ -153,6 +154,83 @@ const prerecordedClipsResponse: PrerecordedRadioClip[] = [
   }
 ];
 
+const scenarioPlaybackResponse: ScenarioPlayback = {
+  scenario_id: "kaohsiung-tainan-v1",
+  title: "Kaohsiung-Tainan LOGPAC Playback",
+  description:
+    "Scripted demo timeline for driving the full Quarterback logistics workflow in narrative order.",
+  steps: [
+    {
+      step_id: "mule-2-checkpoint-slate",
+      sequence: 1,
+      narrative_time: "2026-05-17T03:12:00Z",
+      title: "Mule 2 reaches Checkpoint Slate",
+      summary: "Transmit Mule 2's routine position update into LOGNET-1.",
+      action: "transmit_prerecorded_clip",
+      clip_id: "lognet-1-mule-2-checkpoint-slate",
+      interpretation_id: null,
+      coa_id: null
+    },
+    {
+      step_id: "nomad-route-dagger-hazard",
+      sequence: 2,
+      narrative_time: "2026-05-17T03:19:00Z",
+      title: "Nomad 6 reports Route Dagger hazard",
+      summary: "Transmit the hazard observation that creates a Review-Required Interpretation.",
+      action: "transmit_prerecorded_clip",
+      clip_id: "lognet-1-nomad-6-route-dagger-hazard",
+      interpretation_id: null,
+      coa_id: null
+    },
+    {
+      step_id: "hammer-4-accept-denied-area",
+      sequence: 3,
+      narrative_time: "2026-05-17T03:20:00Z",
+      title: "Hammer 4 accepts the Denied Area",
+      summary: "Apply the operator review action that creates the Route Dagger Denied Area.",
+      action: "accept_proposed_interpretation",
+      clip_id: null,
+      interpretation_id: "interp-rt-lognet-1-nomad-6-route-dagger-hazard",
+      coa_id: null
+    },
+    {
+      step_id: "nomad-jp8-burn-rate",
+      sequence: 4,
+      narrative_time: "2026-05-17T03:24:00Z",
+      title: "Nomad 6 reports JP-8 burn rate",
+      summary:
+        "Transmit the Supply Signal that updates Nomad JP-8 projection and regenerates the Executable COA.",
+      action: "transmit_prerecorded_clip",
+      clip_id: "lognet-1-nomad-6-jp8-burn-rate",
+      interpretation_id: null,
+      coa_id: null
+    },
+    {
+      step_id: "hammer-4-approve-route-dagger-coa",
+      sequence: 5,
+      narrative_time: "2026-05-17T03:25:00Z",
+      title: "Hammer 4 approves the Route Dagger COA",
+      summary:
+        "Approve the generated Executable COA so Mule 2 receives an approved Draft Transmission with Outbound Audio.",
+      action: "approve_executable_coa",
+      clip_id: null,
+      interpretation_id: null,
+      coa_id: "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    },
+    {
+      step_id: "hammer-4-quarterback-last-thirty",
+      sequence: 6,
+      narrative_time: "2026-05-17T03:26:00Z",
+      title: "Hammer 4 asks Quarterback for the last thirty",
+      summary: "Transmit the addressed intent that produces a grounded Quarterback rollup and Outbound Audio.",
+      action: "transmit_prerecorded_clip",
+      clip_id: "lognet-1-hammer-4-quarterback-last-thirty",
+      interpretation_id: null,
+      coa_id: null
+    }
+  ]
+};
+
 const radioTransmissionResponse: RadioTransmission = {
   transmission_id: "rt-lognet-1-mule-2-checkpoint-slate",
   clip_id: "lognet-1-mule-2-checkpoint-slate",
@@ -228,6 +306,34 @@ const hazardTransmissionResponse: RadioTransmission = {
         buffer_radius_meters: 750,
         buffer_rule: "possible_ied hazards require a 750m denied-area buffer"
       }
+    }
+  ]
+};
+
+const supplyTransmissionResponse: RadioTransmission = {
+  transmission_id: "rt-lognet-1-nomad-6-jp8-burn-rate",
+  clip_id: "lognet-1-nomad-6-jp8-burn-rate",
+  radio_channel: "LOGNET-1",
+  source_callsign: "Nomad 6",
+  recorded_at: "2026-05-17T03:24:00Z",
+  audio: {
+    filename: "lognet-1-nomad-6-jp8-burn-rate.wav",
+    content_type: "audio/wav",
+    duration_seconds: 6.2,
+    fixture_uri: "fixture://tactical-radio/lognet-1-nomad-6-jp8-burn-rate.wav"
+  },
+  transcript: "Hammer 4, Nomad 6. JP-8 burn rate is three point two times baseline after contact.",
+  transcription: {
+    pipeline: "Fixture Transcription Pipeline",
+    fixture_id: "nomad-6-jp8-burn-rate-transcript"
+  },
+  interpretations: [
+    {
+      interpretation_id: "interp-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+      kind: "auto_accepted",
+      domain_event_id: "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+      summary: "Nomad 6 reports JP-8 burn rate at 3.2x baseline.",
+      extracted_callsigns: ["Hammer 4", "Nomad 6"]
     }
   ]
 };
@@ -1077,6 +1183,68 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: "Accept Denied Area" })).not.toBeInTheDocument();
     expect(screen.queryByText("Selected Route Variant: Route Dagger Western Bypass")).not.toBeInTheDocument();
   });
+
+  it("runs the scripted scenario playback through real workflow endpoints", async () => {
+    mockApiFetch({
+      scenarioAfterTransmission: scenarioAfterRadioTransmissionResponse,
+      scenarioAfterAcceptedInterpretation: scenarioAfterHazardAcceptedResponse,
+      scenarioAfterSupplySignal: scenarioWithExecutableCoaResponse,
+      scenarioAfterCoaApproval: scenarioAfterCoaApprovalResponse,
+      transmissionsByClip: {
+        "lognet-1-mule-2-checkpoint-slate": radioTransmissionResponse,
+        "lognet-1-nomad-6-route-dagger-hazard": hazardTransmissionResponse,
+        "lognet-1-nomad-6-jp8-burn-rate": supplyTransmissionResponse,
+        "lognet-1-hammer-4-quarterback-last-thirty": addressedIntentTransmissionResponse
+      }
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Run Playback" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run Playback" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Playback Complete")).toBeInTheDocument();
+    });
+
+    const transmissionCalls = vi.mocked(globalThis.fetch).mock.calls.filter(([input]) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      return url === "http://localhost:8000/radio/transmissions";
+    });
+    expect(
+      transmissionCalls.map(([, init]) => JSON.parse(String(init?.body)).clip_id)
+    ).toEqual([
+      "lognet-1-mule-2-checkpoint-slate",
+      "lognet-1-nomad-6-route-dagger-hazard",
+      "lognet-1-nomad-6-jp8-burn-rate",
+      "lognet-1-hammer-4-quarterback-last-thirty"
+    ]);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/interpretations/proposed/interp-rt-lognet-1-nomad-6-route-dagger-hazard/accept",
+      {
+        method: "POST"
+      }
+    );
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/coas/coa-route-dagger-western-bypass-nomad-jp8-resupply/approve",
+      {
+        method: "POST"
+      }
+    );
+    expect(screen.getByText("Mule 2 reaches Checkpoint Slate")).toBeInTheDocument();
+    expect(screen.getByText("Hammer 4 asks Quarterback for the last thirty")).toBeInTheDocument();
+    expect(screen.getByText("Quarterback Rollup")).toBeInTheDocument();
+    expect(screen.getByText("Draft Transmission")).toBeInTheDocument();
+    expect(
+      screen.getByText("oa-draft-coa-route-dagger-western-bypass-nomad-jp8-resupply-hauler-8")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("oa-resp-rt-lognet-1-hammer-4-quarterback-last-thirty-last-thirty-resupply-impact")
+    ).toBeInTheDocument();
+  });
 });
 
 function mockApiFetch({
@@ -1084,12 +1252,16 @@ function mockApiFetch({
   readinessStatus = 200,
   scenario = scenarioResponse,
   scenarioStatus = 200,
+  playback = scenarioPlaybackResponse,
+  playbackStatus = 200,
   scenarioAfterTransmission,
   scenarioAfterAcceptedInterpretation,
+  scenarioAfterSupplySignal,
   scenarioAfterCoaApproval,
   scenarioAfterCoaRejection,
   prerecordedClips = prerecordedClipsResponse,
   transmission = radioTransmissionResponse,
+  transmissionsByClip,
   acceptedInterpretationEvent = acceptedDeniedAreaEvent,
   coaDecisionEvent = approvedCoaDecisionEvent
 }: {
@@ -1097,17 +1269,22 @@ function mockApiFetch({
   readinessStatus?: number;
   scenario?: LogisticsPictureScenario;
   scenarioStatus?: number;
+  playback?: ScenarioPlayback;
+  playbackStatus?: number;
   scenarioAfterTransmission?: LogisticsPictureScenario;
   scenarioAfterAcceptedInterpretation?: LogisticsPictureScenario;
+  scenarioAfterSupplySignal?: LogisticsPictureScenario;
   scenarioAfterCoaApproval?: LogisticsPictureScenario;
   scenarioAfterCoaRejection?: LogisticsPictureScenario;
   prerecordedClips?: PrerecordedRadioClip[];
   transmission?: RadioTransmission;
+  transmissionsByClip?: Record<string, RadioTransmission>;
   acceptedInterpretationEvent?: AcceptedDomainEvent;
   coaDecisionEvent?: AcceptedDomainEvent;
 } = {}) {
   let transmissionAccepted = false;
   let interpretationAccepted = false;
+  let supplySignalAccepted = false;
   let coaApproved = false;
   let coaRejected = false;
 
@@ -1127,6 +1304,10 @@ function mockApiFetch({
         return Promise.resolve(jsonResponse(scenarioAfterCoaRejection, scenarioStatus));
       }
 
+      if (supplySignalAccepted && scenarioAfterSupplySignal) {
+        return Promise.resolve(jsonResponse(scenarioAfterSupplySignal, scenarioStatus));
+      }
+
       if (interpretationAccepted && scenarioAfterAcceptedInterpretation) {
         return Promise.resolve(jsonResponse(scenarioAfterAcceptedInterpretation, scenarioStatus));
       }
@@ -1138,13 +1319,22 @@ function mockApiFetch({
       return Promise.resolve(jsonResponse(scenario, scenarioStatus));
     }
 
+    if (url === "http://localhost:8000/scenarios/kaohsiung-tainan/playback") {
+      return Promise.resolve(jsonResponse(playback, playbackStatus));
+    }
+
     if (url === "http://localhost:8000/radio/prerecorded-clips") {
       return Promise.resolve(jsonResponse(prerecordedClips, 200));
     }
 
     if (url === "http://localhost:8000/radio/transmissions") {
-      transmissionAccepted = true;
-      return Promise.resolve(jsonResponse(transmission, 201));
+      const request = JSON.parse(String(init?.body ?? "{}")) as { clip_id?: string };
+      if (request.clip_id === "lognet-1-nomad-6-jp8-burn-rate") {
+        supplySignalAccepted = true;
+      } else {
+        transmissionAccepted = true;
+      }
+      return Promise.resolve(jsonResponse(transmissionsByClip?.[request.clip_id ?? ""] ?? transmission, 201));
     }
 
     if (

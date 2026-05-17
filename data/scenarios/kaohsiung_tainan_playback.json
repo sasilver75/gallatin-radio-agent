@@ -1,0 +1,61 @@
+{
+  "scenario_id": "kaohsiung-tainan-v1",
+  "title": "Kaohsiung-Tainan LOGPAC Playback",
+  "description": "Scripted demo timeline for driving the full Quarterback logistics workflow in narrative order.",
+  "steps": [
+    {
+      "step_id": "mule-2-checkpoint-slate",
+      "sequence": 1,
+      "narrative_time": "2026-05-17T03:12:00Z",
+      "title": "Mule 2 reaches Checkpoint Slate",
+      "summary": "Transmit Mule 2's routine position update into LOGNET-1.",
+      "action": "transmit_prerecorded_clip",
+      "clip_id": "lognet-1-mule-2-checkpoint-slate"
+    },
+    {
+      "step_id": "nomad-route-dagger-hazard",
+      "sequence": 2,
+      "narrative_time": "2026-05-17T03:19:00Z",
+      "title": "Nomad 6 reports Route Dagger hazard",
+      "summary": "Transmit the hazard observation that creates a Review-Required Interpretation.",
+      "action": "transmit_prerecorded_clip",
+      "clip_id": "lognet-1-nomad-6-route-dagger-hazard"
+    },
+    {
+      "step_id": "hammer-4-accept-denied-area",
+      "sequence": 3,
+      "narrative_time": "2026-05-17T03:20:00Z",
+      "title": "Hammer 4 accepts the Denied Area",
+      "summary": "Apply the operator review action that creates the Route Dagger Denied Area.",
+      "action": "accept_proposed_interpretation",
+      "interpretation_id": "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+    },
+    {
+      "step_id": "nomad-jp8-burn-rate",
+      "sequence": 4,
+      "narrative_time": "2026-05-17T03:24:00Z",
+      "title": "Nomad 6 reports JP-8 burn rate",
+      "summary": "Transmit the Supply Signal that updates Nomad JP-8 projection and regenerates the Executable COA.",
+      "action": "transmit_prerecorded_clip",
+      "clip_id": "lognet-1-nomad-6-jp8-burn-rate"
+    },
+    {
+      "step_id": "hammer-4-approve-route-dagger-coa",
+      "sequence": 5,
+      "narrative_time": "2026-05-17T03:25:00Z",
+      "title": "Hammer 4 approves the Route Dagger COA",
+      "summary": "Approve the generated Executable COA so Mule 2 receives an approved Draft Transmission with Outbound Audio.",
+      "action": "approve_executable_coa",
+      "coa_id": "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    },
+    {
+      "step_id": "hammer-4-quarterback-last-thirty",
+      "sequence": 6,
+      "narrative_time": "2026-05-17T03:26:00Z",
+      "title": "Hammer 4 asks Quarterback for the last thirty",
+      "summary": "Transmit the addressed intent that produces a grounded Quarterback rollup and Outbound Audio.",
+      "action": "transmit_prerecorded_clip",
+      "clip_id": "lognet-1-hammer-4-quarterback-last-thirty"
+    }
+  ]
+}
