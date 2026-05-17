@@ -400,6 +400,77 @@ def test_accepted_supply_signal_updates_inventory_projection_and_status_band() -
     }
 
 
+def test_accepted_operational_changes_regenerate_executable_coa_from_route_and_inventory_state() -> None:
+    ledger_store = InMemoryEventLedgerStore()
+    proposed_store = InMemoryProposedInterpretationStore()
+    client = TestClient(
+        create_app(
+            event_ledger_store=ledger_store,
+            proposed_interpretation_store=proposed_store,
+        )
+    )
+    hazard_interpretation_id = "interp-rt-lognet-1-nomad-6-route-dagger-hazard"
+
+    client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-route-dagger-hazard"},
+    )
+    client.post(f"/interpretations/proposed/{hazard_interpretation_id}/accept")
+    client.post(
+        "/radio/transmissions",
+        json={"clip_id": "lognet-1-nomad-6-jp8-burn-rate"},
+    )
+    picture_response = client.get("/scenarios/kaohsiung-tainan/logistics-picture")
+
+    assert picture_response.status_code == 200
+    picture = picture_response.json()
+    coas = picture["executable_coas"]
+    assert [coa["coa_id"] for coa in coas] == [
+        "coa-route-dagger-western-bypass-nomad-jp8-resupply"
+    ]
+
+    coa = coas[0]
+    assert coa["name"] == "Route Dagger Western Bypass / Nomad JP-8 Resupply"
+    assert coa["source_event_ids"] == [
+        "evt-rt-lognet-1-nomad-6-route-dagger-hazard-denied-area",
+        "evt-rt-lognet-1-nomad-6-jp8-burn-rate-supply-signal",
+    ]
+    assert coa["rationale"] == (
+        "Accepted Denied Area and Supply Signal require a bypass LOGPAC revision."
+    )
+    assert len(coa["movements"]) == 1
+
+    movement = coa["movements"][0]
+    assert movement["movement_id"] == "mov-route-dagger-western-bypass-nomad-jp8"
+    assert movement["movement_status"] == "Proposed Movement Status"
+    assert movement["route_variant_id"] == "route-variant-route-dagger-western-bypass"
+    assert movement["route_name"] == "Route Dagger Western Bypass"
+    assert movement["depart_at"] == "2026-05-17T04:00:00Z"
+    assert movement["arrive_at"] == "2026-05-17T05:04:00Z"
+    assert movement["logpac"] == [
+        {
+            "tracked_supply": "JP-8",
+            "class_of_supply": "Class III",
+            "quantity": 480.0,
+            "unit": "gal",
+            "destination_unit_id": "nomad",
+            "destination_callsign": "Nomad",
+            "reason": "Restore Nomad JP-8 above red after 3.2x burn-rate Supply Signal.",
+        }
+    ]
+    assert movement["assumptions"] == [
+        "Mule 2 remains available for one LOGPAC movement.",
+        "Route Dagger Western Bypass remains clear of accepted Denied Areas.",
+    ]
+    assert movement["risks"] == [
+        "Route Dagger baseline conflicts with Route Dagger Checkpoint Slate Denied Area.",
+        "Nomad JP-8 reaches projected black time at 2026-05-18T00:24:00Z without resupply.",
+    ]
+    assert movement["projected_effect"] == (
+        "Nomad JP-8 improves from 0.9 DOS red to 1.7 DOS amber before projected black time 2026-05-18T00:24:00Z."
+    )
+
+
 def inventory_item(
     picture: dict[str, object],
     unit_id: str,
