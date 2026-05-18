@@ -1,98 +1,59 @@
-# Gallatin Radio Agent
+# Gallatin LCOP
 
-Interview demo application: Tactical Radio Audio becomes a logistics common operating picture, event ledger, denied areas, route variants, inventory projections, executable COAs, operator approvals, grounded rollups, and outbound radio audio.
+Gallatin LCOP is a rebuilt Logistics Common Operating Picture for a Logistics Watch Officer.
 
-## Repository Boundary
+The product direction is a map-first sustainment workspace: the officer starts from a real geographic operating picture, selects Units, inspects their logistics posture, sees inventory risk across time, and updates trusted logistics state through explicit operator actions.
 
-This repository is for the Gallatin Radio Agent demo app.
+## Product Focus
 
-It should contain:
+The application should make the Logistics Picture legible first. The map is the primary workspace; side panels exist to explain the selected Unit, its Reporting Units, and its sustainment risk.
 
-- Product context, domain glossary, ADRs, and scenario data.
-- The React/TypeScript operator UI under `apps/web`.
-- The FastAPI backend under `apps/api`.
-- Shared schema artifacts under `packages/schemas`.
-- Local app infrastructure under `infra`.
+Current product foundation:
 
-## Linear
+- `3rd Infantry Brigade Combat Team` is the default Selected Unit.
+- The scenario uses Taiwan geography with fictional Unit disposition.
+- Units carry display names, short labels, MGRS Grid References, headcount, and Unit Tags.
+- Reporting Units can be selected from the map or from the parent Unit panel.
+- Parent Unit views summarize subordinate sustainment by Class of Supply Rollup.
+- Reporting Unit views show item-level Inventory Lines.
+- Initial supply scope is Class I, Class III, and Class V.
+- Inventory displays On-Hand Inventory plus 24, 48, 72, and 96 hour Forecast Horizons.
+- BRAG Status is derived from quantities and Status Cutoffs.
+- Inventory Updates can batch multiple On-Hand Inventory Corrections and Inventory Removals.
+- Add Items is the separate path for Inventory Additions.
 
-Project: Gallatin Radio Agent
+## Design Principles
 
-Initial ticket chain:
+- Build around the Logistics Watch Officer's job, not a generic dashboard.
+- Keep the Logistics Common Operating Picture map-first.
+- Treat `CONTEXT.md` as the source of truth for domain language.
+- Preserve human authority: consequential logistics state changes should flow through explicit operator actions.
+- Prefer vertical slices where UI behavior, API behavior, typed schemas, and fixture-backed state move together.
+- Use the Gallatin Navigator reference to learn interaction patterns, but do not copy its scenario wholesale.
 
-- `SAM-77` Bootstrap Local Quarterback Workspace
-- `SAM-78` Render Seed Kaohsiung-Tainan Logistics Common Operating Picture
-- `SAM-79` Persist Event Ledger and Project Accepted Domain Events
-- `SAM-80` Ingest Prerecorded Radio Clips Through Transcription Pipeline
-- `SAM-81` Interpret Radio Into Position Updates and Supply Signals
-- `SAM-82` Review Hazard Observations and Create Denied Areas
-- `SAM-83` Generate ORS Route Variants Around Denied Areas
-- `SAM-84` Show Inventory Projections, Days of Supply, and Burn Rate Changes
-- `SAM-85` Regenerate Executable COAs From Accepted Operational Changes
-- `SAM-86` Approve or Reject Executable COAs Deterministically
-- `SAM-87` Answer Addressed Intents With Quarterback Radio Rollups
-- `SAM-88` Generate Quarterback Outbound Audio for Rollups and Approved Instructions
-- `SAM-89` Assemble Demo Scenario Playback
+## Current Repository Shape
 
-## Current Contents
+This repository is currently a planning and domain-foundation workspace. Application code has been removed while the product is reoriented around the Logistics Common Operating Picture.
 
-- `CONTEXT.md`: domain glossary and naming rules for the Radio-to-Map Logistics Agent.
-- `GALLATIN_CONTEXT.md`: Gallatin company/product research context.
-- `docs/adr`: early architecture decisions.
-- `docs/GALLATIN_ML_INTERVIEW_PREP.md`: interview prep and data/ML framing.
-- `explainers/military-logistics-for-gallatin.md`: domain explainer.
-- `artifacts/transcripts`: captured audio/transcript material for demo exploration.
+Important files:
 
-The copied WAV artifact is intentionally ignored by Git because it is large. Use Git LFS, a smaller fixture, or a documented download/regeneration step before relying on audio assets in CI or hosted demos.
+- `CONTEXT.md`: canonical domain glossary and relationships.
+- `docs/LCOP_PRD_DRAFT.md`: living product requirements draft from the demo walkthrough and grilling sessions.
+- `AGENTS.md`: instructions for coding agents working in this repository.
+- `GALLATIN_CONTEXT.md`: public Gallatin AI product and company context.
+- `GALLATIN_DEMO_TRANSCRIPT.md`: reference transcript from the Gallatin Navigator demo.
+- `explainers/military-logistics-for-gallatin.md`: practical logistics background for the product.
 
-## Local Development
+## Next Build Direction
 
-Prerequisites:
+The next implementation should begin with the LCOP foundation:
 
-- Docker with Compose.
-- Node.js 24+ and npm.
-- Python 3.12+ with `uv`.
+1. Unit and Reporting Unit data model.
+2. Taiwan map base layer with fictional Unit positions.
+3. Selected Unit interaction from map pins and Reporting Unit lists.
+4. Parent Unit Class of Supply Rollups.
+5. Reporting Unit Inventory Projection Matrix.
+6. Inventory edit flow for On-Hand corrections and removals.
+7. Add Items flow for new Inventory Lines.
 
-Install dependencies:
-
-```sh
-npm install
-uv sync --dev
-```
-
-Start the local Quarterback workspace:
-
-```sh
-npm run dev
-```
-
-The command starts PostGIS, the FastAPI backend, and the React web shell.
-
-- Web: http://localhost:5173
-- API health: http://localhost:8000/healthz
-- API readiness: http://localhost:8000/readyz
-- PostGIS: `localhost:55432`, database/user/password `quarterback`
-
-Copy `.env.example` to `.env` if you need to override local defaults.
-
-Run focused verification:
-
-```sh
-npm test
-```
-
-## Demo Playback
-
-The web workspace includes a Scenario Playback panel backed by `data/scenarios/kaohsiung_tainan_playback.json`. `Run Playback` drives the seeded flow through the public API in order: Prerecorded Radio Clip ingestion, Proposed Interpretation review, Denied Area projection, route and inventory projection, COA Approval, grounded rollup, Draft Transmission, and Outbound Audio.
-
-Local playback uses deterministic fixtures for transcription, routing, and Outbound Audio metadata. No OpenRouteService or TTS credentials are required for the scripted local demo.
-
-## Intended Stack
-
-See `docs/adr/0003-fastapi-react-postgis-stack.md`.
-
-- React/TypeScript frontend.
-- Python FastAPI backend.
-- Postgres/PostGIS persistence.
-- MapLibre map rendering.
-- OpenRouteService routing with deterministic fixtures for local tests.
+Once those foundations are credible, LOGSYNC and Course of Action workflows can be designed from the same Logistics Picture.

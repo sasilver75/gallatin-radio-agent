@@ -13,7 +13,3 @@ coverage/
 .env
 .env.*
 !.env.example
-
-# Large local demo media should use Git LFS or be regenerated/downloaded.
-artifacts/**/*.wav
-GALLATIN_DEMO_TRANSCRIPT.md

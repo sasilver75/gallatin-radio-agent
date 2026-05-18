@@ -81,15 +81,6 @@ Examples:
 - A vehicle is assigned to a convoy plan, but maintenance reports it is non-mission capable.
 - A LOGSTAT says ammunition is green, but the unit's current mission profile implies it will become amber before the next scheduled resupply.
 
-This is why the local demo vocabulary matters:
-
-- **Interpreted Reports** preserve what was reported, when, by whom, with what confidence.
-- The **Event Ledger** records the evidence trail.
-- The **Logistics Picture** is the system's best current operating view.
-- The **Logistics Watch Officer** still decides how to act on that picture.
-
-Good logistics software does not erase uncertainty. It makes uncertainty visible and decision-relevant.
-
 ## Supply Classes
 
 The US military often organizes supply into classes. You do not need to memorize every class, but the categories explain why "supplies" is not one generic bucket.
@@ -292,27 +283,6 @@ Their product thesis only works if the system understands constraints. A generic
 - What risk is acceptable.
 - What other supply needs compete for the same lift.
 - Who must approve the plan.
-
-## How This Maps to the Local Demo
-
-The local Radio-to-Map Logistics Agent is a Gallatin-inspired slice of the broader problem.
-
-The demo's core flow is:
-
-1. Tactical Radio Audio contains logistics-relevant facts.
-2. The agent interprets those facts into structured Interpreted Reports.
-3. The Event Ledger preserves the source and evidence trail.
-4. The Logistics Picture updates units, routes, supplies, hazards, and events.
-5. The Logistics Watch Officer asks Quarterback for a Radio Rollup or Reroute Recommendation.
-6. Quarterback responds with an Addressed Response grounded in the Event Ledger and Logistics Picture.
-
-The strongest version of this demo should feel like military logistics, not only radio transcription:
-
-- A route blockage should change the feasibility of a Supply Convoy.
-- A low-fuel report should affect delivery priority and timing.
-- A disabled vehicle should reduce convoy capacity or change the load plan.
-- Conflicting radio reports should preserve uncertainty instead of overwriting history.
-- A recommendation should explain its assumptions and tradeoffs.
 
 ## The Key Product Standard
 

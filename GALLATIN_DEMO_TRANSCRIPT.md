@@ -1,0 +1,11 @@
+(0:00) Today's radio coms are really stocking-cast. (0:05) Thank you. (0:06) You have transmissions being received by humans, (0:10) they write them down on notes, (0:12) they swivel-chair it to the next person in the talk.
+(0:16) It's totally backwards. (0:19) What we've built in the last 24 hours is a radio agent. (0:24) It dials into every available channel, (0:26) it transcribes, it reasons, (0:30) it picks from a bunch of options, (0:32) creates course of actions, (0:33) and ultimately drives those actions across the battlefield (0:38) through different tools and processes.
+(0:42) We've integrated with Maven Smart Systems, (0:46) very well-known, this is called Gaia, the map app. (0:50) And with that, we'll jump straight into the first demo. (1:00) Crusader, Godfather, send it.
+(1:11) Godfather copies. (1:15) So we see the position report, Gaia in Maven Smart System, (1:19) just learned about it and updated in real time (1:21) based on the understanding. (1:24) Now, let's enter combat.
+(1:35) Crusader, this is Godfather, copy all. (1:38) Got Archangel Company in reserve. (1:40) Advise if you need QRF, over.
+(1:43) And again, you can see an enemy that was spotted (1:45) through a Z-trap has shown up here. (1:51) The battle is over, and as General Pershing once said, (1:54) infantry wins battles, but logistics wins the wars. (1:58) Let's look at an urgent resupply request as a result of this.
+(2:16) Godfather copies all. We'll keep you all updated. (2:23) Great.
+And I want you to pay attention here to this log stat. (2:26) You should see some of the fields are going black, (2:28) which is the worst situation you could be in as a logistician. (2:34) Next, as a brigade commander, I want a real-time summary, (2:38) and I can ask, create a system of what actually happened (2:40) in the last few minutes or hours of the battlefield.
+(2:50) Godfather, this is Overlord 6. (2:52) Heard combat need a rundown, over. (2:59) Overlord 6, this is Godfather. (3:01) Wait one on Z-trap, over.
+(3:03) So it's now processing. (3:04) It acknowledges that it understands the task, and it's now processing. (3:07) Overlord, this is Godfather.
+(3:14) It came under effective enemy... (3:15) All right, thank you, Team Gallatin, and fortunately that is time. (3:18) Let's get a round of applause for Gallatin.

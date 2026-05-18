@@ -1,256 +1,128 @@
-# Radio-to-Map Logistics Agent
+# Logistics Common Operating Picture
 
-This context defines the domain language for a Gallatin-inspired demo that turns tactical radio audio into geospatial logistics state and recommended sustainment actions.
+This context defines the domain language for the rebuilt Gallatin-inspired Logistics Common Operating Picture. The current product direction is a map-first sustainment workspace for a Logistics Watch Officer.
 
 ## Language
 
-**Radio-to-Map Logistics Agent**:
-An agentic system that converts tactical radio audio into a maintained logistics picture and recommended actions.
-_Avoid_: Radio agent, map agent, audio dashboard
-
-**Agent Callsign**:
-The radio-net identity used by the Radio-to-Map Logistics Agent when acknowledging requests or responding with summaries and recommendations.
-_Avoid_: Bot name, assistant name, username
-
-**Passive Monitoring**:
-The agent behavior of listening to radio traffic and updating the Logistics Picture without transmitting on the radio net.
-_Avoid_: Background mode, silent mode
-
-**Addressed Response**:
-An agent transmission made only after a human participant calls the Agent Callsign or asks the agent for information.
-_Avoid_: Auto-response, proactive broadcast
-
-**Tactical Radio Audio**:
-Spoken field communications from live or prerecorded radio-like audio that may contain logistics-relevant facts.
-_Avoid_: Transcript, message, clip when referring to the source audio itself
-
-**Prerecorded Radio Clip**:
-A saved Tactical Radio Audio file used to drive a repeatable demo through the same transcription path as live audio.
-_Avoid_: Scripted transcript, canned event
-
-**Transcription Pipeline**:
-The shared process that converts Tactical Radio Audio into text for interpretation, regardless of whether the source is live or prerecorded.
-_Avoid_: Hardcoded transcript, audio mock
-
-**Radio Channel**:
-A named source lane for Tactical Radio Audio in the Live Radio View.
-_Avoid_: Net, stream
-
-**LOGNET-1**:
-The single Radio Channel used for v1 tactical logistics traffic.
-_Avoid_: HANDHELD-1, command net
-
-**Field Radio Console**:
-The walkie-talkie simulator for transmitting Tactical Radio Audio as a selected callsign.
-_Avoid_: Convoy UI, field dashboard
-
-**Logistics Picture**:
-The system's current representation of units, routes, supplies, hazards, and events relevant to sustainment decisions.
-_Avoid_: Reality, database, backend state
-
 **Logistics Common Operating Picture**:
-The shared map-first view of sustainment state across units, supplies, movements, routes, and hazards.
-_Avoid_: Dashboard, map when referring to the full sustainment picture
-
-**Event Ledger**:
-The append-only record of interpreted observations, reports, and decisions that explain how the Logistics Picture was derived.
-_Avoid_: Activity log, audit log, map history
-
-**Radio Transmission**:
-An observed radio communication preserved as evidence before interpretation.
-_Avoid_: Message, report when referring to the raw communication
-
-**Semantic Output**:
-The structured meaning produced from a Radio Transmission after transcription and interpretation.
-_Avoid_: Parsed text, extracted data
-
-**Domain Event**:
-A Semantic Output that describes or changes the operational world.
-_Avoid_: Intent, UI action
-
-**Interaction Intent**:
-A Semantic Output that asks Quarterback to respond or perform an interaction without directly changing the operational world.
-_Avoid_: Domain event, command when it is just a request for response
-
-**Addressed Intent**:
-An Interaction Intent directed at Quarterback by callsign.
-_Avoid_: Addressed query, radio event
-
-**Operator Action**:
-A Logistics Watch Officer action taken through the Supply Officer View.
-_Avoid_: Radio event, agent action
-
-**COA Approval**:
-An Operator Action that accepts an Executable Course of Action for execution.
-_Avoid_: Route approval when the whole plan is accepted
-
-**COA Feedback**:
-An Operator Action that asks for revision to an Executable Course of Action without approving it.
-_Avoid_: v1 workflow
-
-**COA Rejection**:
-An Operator Action that declines an Executable Course of Action.
-_Avoid_: Feedback when the plan should not be pursued
-
-**COA Application**:
-The deterministic workflow that applies an approved Executable Course of Action to the Logistics Picture.
-_Avoid_: Quarterback applying state, agent mutation
-
-**Draft Transmission**:
-A proposed radio instruction or response generated from approved state for Hammer 4 to send through Quarterback.
-_Avoid_: Autonomous tasking, agent order
-
-**Outbound Audio**:
-Audio spoken by Quarterback for an Addressed Response or approved Draft Transmission.
-_Avoid_: Silent text response
-
-**Radio Brevity**:
-The constraint that Quarterback transmissions should be short radio-appropriate summaries or instructions, not full COA narration.
-_Avoid_: Reading the full plan over the radio
-
-**Position Update**:
-A Domain Event that updates the known position of a unit, convoy, or other tracked entity.
-_Avoid_: Location report
-
-**Proposed Interpretation**:
-An agent-derived meaning of a Radio Transmission that has not yet been accepted into the Logistics Picture.
-_Avoid_: Supposition, guess
-
-**Auto-Accepted Interpretation**:
-A low-risk Proposed Interpretation accepted without Logistics Watch Officer review.
-_Avoid_: Unreviewed change
-
-**Review-Required Interpretation**:
-A Proposed Interpretation that must be accepted, edited, or rejected by the Logistics Watch Officer before it affects consequential operational state.
-_Avoid_: Flagged item, uncertain event
-
-**Rejected Interpretation**:
-A Proposed Interpretation the Logistics Watch Officer decides should not affect the Logistics Picture.
-_Avoid_: Deleted event, ignored report
-
-**Interpretation Judge**:
-An agent role that decides whether a Proposed Interpretation can be auto-accepted or requires review.
-_Avoid_: Confidence scorer, approval bot
-
-**Agentic Boundary**:
-The rule that only tasks requiring language judgment, ambiguity handling, or user-facing reasoning should be implemented as agents.
-_Avoid_: Agent for everything, persistent agent swarm
-
-**Review Trigger**:
-A scenario guideline the Interpretation Judge uses when deciding whether a Proposed Interpretation requires Logistics Watch Officer review.
-_Avoid_: Hard rule, policy
-
-**Interpreted Report**:
-A structured event derived from Tactical Radio Audio that preserves the reported fact, source, timing, and evidence.
-_Avoid_: Extracted data, parsed message
-
-**Supported Unit**:
-A field unit whose supply status, location, or mission creates sustainment demand.
-_Avoid_: Customer, requester, receiver
+The map-first workspace where a Logistics Watch Officer inspects Unit location, sustainment posture, inventory projections, and related logistics state.
+_Avoid_: Dashboard, map widget
 
 **Logistics Watch Officer**:
-The coordination user responsible for maintaining the Logistics Picture and deciding how new reports affect the resupply plan.
-_Avoid_: Dispatcher, commander, radio operator
+The coordination user responsible for maintaining the Logistics Common Operating Picture and acting on sustainment risk.
+_Avoid_: Dispatcher, generic user
 
-**Supply Convoy**:
-The execution element that moves supplies to Supported Units along assigned routes.
-_Avoid_: Truck, delivery, asset
+**Logistics Picture**:
+The current operational sustainment state represented by Units, inventory, locations, and projections.
+_Avoid_: Reality, database, frontend state
 
-**Supply Load**:
-The supplies currently carried by a Supply Convoy.
-_Avoid_: Cargo, payload, inventory when referring to convoy-carried supplies
+**Unit**:
+A military organization represented in the Logistics Common Operating Picture.
+_Avoid_: Formation, map pin, group
+
+**Selected Unit**:
+The Unit currently in focus in the Logistics Common Operating Picture.
+_Avoid_: Active card, selected pin
+
+**Unit Summary Pane**:
+The persistent side pane that describes the current Selected Unit.
+_Avoid_: Main workspace, generic sidebar
+
+**Detail Pane**:
+The expanded working surface opened from a Unit Summary Pane section.
+_Avoid_: Modal when it remains part of the LCOP workspace
+
+**Parent Unit Context**:
+The higher-level Unit context retained when a subordinate Reporting Unit becomes the Selected Unit.
+_Avoid_: Breadcrumb when referring to the domain relationship
+
+**Parent Unit Navigation**:
+The UI affordance for returning from a subordinate Selected Unit to its Parent Unit Context.
+_Avoid_: Browser history
+
+**Unit Display Name**:
+The human-readable full name of a Unit.
+_Avoid_: Label when referring to the full name
+
+**Unit Short Label**:
+The abbreviated label used for a Unit on compact map and matrix surfaces.
+_Avoid_: Nickname, code name
+
+**Unit Tag**:
+A freeform short descriptor attached to a Unit to communicate mission posture or application-specific identity.
+_Avoid_: Label when referring to a unit name
+
+**Reporting Unit**:
+A Unit whose logistics status contributes to a higher-level sustainment posture.
+_Avoid_: Row, child item, map marker
+
+**Supported Unit**:
+A Unit whose supply status, location, or mission creates sustainment demand.
+_Avoid_: Customer, requester, receiver
+
+**MGRS Grid Reference**:
+A Military Grid Reference System location string used to identify a position in military-readable form.
+_Avoid_: Address, latitude-longitude display
 
 **Inventory**:
-The quantity of Tracked Supplies held at a location, carried by a LOGPAC, or reported by a Supported Unit.
-_Avoid_: Stocks, stockpile
+The quantity of Tracked Supplies held by a Unit.
+_Avoid_: Stocks, warehouse, cargo
 
-**LOGPAC**:
-A logistics package: a planned resupply package and convoy organized to replenish supported units.
-_Avoid_: Resupply plan when referring to the package/convoy itself
+**Inventory Line**:
+A Tracked Supply represented in a specific Unit's active Inventory.
+_Avoid_: Global supply item, historical record
 
-**Resupply Plan**:
-The broader plan for how sustainment needs will be met, including LOGPACs, routes, destinations, timing, and approvals.
-_Avoid_: LOGPAC when referring to the overall planning state
+**On-Hand Inventory**:
+Inventory currently available before future projection.
+_Avoid_: OH as the canonical term
 
-**Course of Action**:
-A proposed way to accomplish a sustainment mission through movements, loads, routes, timing, priorities, assumptions, and risks.
-_Avoid_: Suggestion, option
+**Projected Inventory**:
+The predicted quantity of a Tracked Supply at a Forecast Horizon.
+_Avoid_: Manually entered future stock
 
-**Executable Course of Action**:
-A Course of Action specified enough for approval and execution in v1.
-_Avoid_: High-level concept when the plan is ready to approve
+**Displayed Inventory Quantity**:
+The non-negative inventory quantity shown to the Logistics Watch Officer.
+_Avoid_: Internal shortage calculation
 
-**COA Regeneration**:
-The recalculation of Courses of Action after accepted operational changes or relevant Operator Actions.
-_Avoid_: Automatic reaction to transcripts, background refresh
+**Requirement Baseline**:
+The standing quantity a Unit is expected to maintain for a Tracked Supply.
+_Avoid_: Mission-specific demand model for the initial LCOP
 
-**Sustainment Requirement**:
-A need inferred from a Supported Unit's projected supply state for a Tracked Supply by a relevant time.
-_Avoid_: Task, request
+**Supply Percentage**:
+The percentage of a Requirement Baseline represented by an inventory quantity.
+_Avoid_: Raw quantity when comparing status across supplies
 
-**Requirement Coverage**:
-The extent to which a Course of Action satisfies one or more Sustainment Requirements.
-_Avoid_: User-managed requirement, supersession
+**Inventory Correction**:
+A trusted Logistics Watch Officer correction to On-Hand Inventory.
+_Avoid_: Temporary edit, future projection edit, local override
 
-**Opportunistic Load**:
-Lower-urgency supplies added to a LOGPAC when remaining Carrying Capacity is available after urgent requirements are covered.
-_Avoid_: Extra cargo, filler
+**Inventory Update**:
+A submitted batch of changes to a Unit's active Inventory.
+_Avoid_: Single-cell edit when multiple changes are submitted together
 
-**Movement**:
-A directive or plan that moves a LOGPAC from origin to destination with route, timing, and execution constraints.
-_Avoid_: Trip, delivery
+**Inventory Addition**:
+A Logistics Watch Officer action that adds an Inventory Line to a Unit's active Inventory.
+_Avoid_: Catalog creation unless the Tracked Supply itself is new
 
-**Movement Status**:
-The lifecycle state of a Movement.
-_Avoid_: Movement alert
+**Supply Catalog**:
+The set of known Tracked Supplies that can be added to Unit Inventory.
+_Avoid_: A Unit's current Inventory
 
-**Proposed Movement Status**:
-A Movement Status indicating the movement has been generated but not approved.
-_Avoid_: Draft
+**Inventory Removal**:
+A Logistics Watch Officer action that removes an Inventory Line from a Unit's active Inventory.
+_Avoid_: Deleting supply history, deleting the Tracked Supply
 
-**Approved Movement Status**:
-A Movement Status indicating the movement has been approved but is not yet underway.
-_Avoid_: Selected
+**Tracked Supply**:
+A specific supply item tracked for Unit inventory and sustainment projection.
+_Avoid_: Resource, arbitrary item
 
-**In Progress Movement Status**:
-A Movement Status indicating the movement is underway.
-_Avoid_: Active when referring to lifecycle status
+**Unit of Issue**:
+The packaging or measurement unit used to count a Tracked Supply.
+_Avoid_: Unit when referring to a military organization
 
-**Reroute Required Movement Status**:
-A Movement Status indicating the movement is underway but its selected route is no longer acceptable.
-_Avoid_: Movement alert
-
-**Completed Movement Status**:
-A Movement Status indicating the movement has finished.
-_Avoid_: Done
-
-**Transport Asset**:
-Any vehicle, vessel, aircraft, unmanned system, or other conveyance used to move supplies in a LOGPAC.
-_Avoid_: Prime mover when the asset is not specifically a truck or tractor
-
-**Carrying Capacity**:
-The amount of supply a Transport Asset, Supply Convoy, or LOGPAC can carry by relevant measures such as weight, volume, or item count.
-_Avoid_: Inventory, load when referring to capacity
-
-**COA Concept**:
-The conceptual portion of a Course of Action, describing the purpose, time-space idea, and broad sustainment approach.
-_Avoid_: Full movement details
-
-**COA Detail**:
-The detailed portion of a Course of Action, describing the supporting movements, LOGPACs, routes, loads, timing, and assumptions.
-_Avoid_: Concept when referring to executable details
-
-**Decision Support Matrix**:
-A planning product that connects expected events, decision points, indicators, and recommended decisions.
-_Avoid_: COA comparison table
-
-**Storage Capacity**:
-The amount of supply a Logistics Support Area or Supported Unit can hold by relevant measures such as quantity, weight, volume, or days of supply.
-_Avoid_: Inventory, warehouse size
-
-**LOGSYNC Matrix**:
-A planning view that organizes sustainment movements by unit and time.
-_Avoid_: Calendar, schedule
+**Quantity per Unit Pack**:
+The number of individual items contained in one packaged Unit of Issue.
+_Avoid_: Pack size when the package count is meant
 
 **Class of Supply**:
 A military logistics category used to group supplies by type.
@@ -260,330 +132,305 @@ _Avoid_: Category, inventory type
 Subsistence supplies such as food, water, and rations.
 _Avoid_: Food category
 
+**Class II**:
+Clothing, individual equipment, tools, and administrative supplies.
+_Avoid_: Gear category
+
 **Class III**:
 Petroleum, oils, and lubricants, including fuel.
 _Avoid_: Fuel category
+
+**Class IV**:
+Construction and fortification materials.
+_Avoid_: Building supplies
 
 **Class V**:
 Ammunition and associated explosive items.
 _Avoid_: Ammo category
 
-**Tracked Supply**:
-A specific supply item tracked in v1 for supported-unit inventory and convoy loads.
-_Avoid_: Resource, item
+**Class VI**:
+Personal demand items.
+_Avoid_: Comfort items
+
+**Class VII**:
+Major end items such as vehicles and weapon systems.
+_Avoid_: Equipment category
+
+**Class VIII**:
+Medical materiel.
+_Avoid_: Medical supplies
+
+**Class IX**:
+Repair parts.
+_Avoid_: Spare parts
+
+**Class X**:
+Nonmilitary support materials.
+_Avoid_: Civilian supplies
+
+**BRAG Status**:
+A Black, Red, Amber, or Green logistics condition used to summarize supply risk.
+_Avoid_: Traffic light, arbitrary color
 
 **Supply Status**:
-The color-band state of a Tracked Supply for a Supported Unit.
+The BRAG Status of a Tracked Supply for a Unit at a specific inventory point.
 _Avoid_: Health, severity
 
-**Green Supply Status**:
-A Supply Status indicating sufficient supply for current planning needs.
-_Avoid_: Good, normal
-
-**Amber Supply Status**:
-A Supply Status indicating degraded supply that needs attention before it becomes mission-limiting.
-_Avoid_: Yellow, warning
-
-**Red Supply Status**:
-A Supply Status indicating critically low supply before it becomes effectively unavailable.
-_Avoid_: Critical, severe
-
-**Black Supply Status**:
-A Supply Status indicating a supply is effectively out or mission-limiting.
-_Avoid_: Empty, zero
-
 **Status Cutoff**:
-A scenario-specific threshold that maps a Tracked Supply quantity or time-to-depletion into a Supply Status.
-_Avoid_: Universal cutoff, doctrine threshold
+A threshold that maps Supply Percentage into a BRAG Status.
+_Avoid_: Universal doctrine threshold
+
+**Default BRAG Bands**:
+The initial product-standard Supply Percentage ranges used to derive BRAG Status.
+_Avoid_: Authoritative doctrine
+
+**Green Status**:
+BRAG Status for Supply Percentage greater than or equal to 80%.
+_Avoid_: Fully mission capable as a guaranteed operational judgment
+
+**Amber Status**:
+BRAG Status for Supply Percentage greater than or equal to 50% and less than 80%.
+_Avoid_: Safe, acceptable
+
+**Red Status**:
+BRAG Status for Supply Percentage greater than or equal to 30% and less than 50%.
+_Avoid_: Immediate failure
+
+**Black Status**:
+BRAG Status for Supply Percentage less than 30%.
+_Avoid_: Empty in every case
+
+**Forecast Horizon**:
+A product-standard time bucket used to evaluate projected sustainment status.
+_Avoid_: Calendar slot, arbitrary column
+
+**72-Hour Sustainment Window**:
+The three-day planning window used as the central reference point for projected sustainment posture.
+_Avoid_: Random forecast point, long-term plan
+
+**Inventory Projection Matrix**:
+A compact view of On-Hand Inventory and Projected Inventory for Tracked Supplies or Classes of Supply.
+_Avoid_: Spreadsheet, generic table
+
+**Inventory View Mode**:
+A way to organize a Unit's Inventory for inspection.
+_Avoid_: Separate inventory type
+
+**Class of Supply Rollup**:
+A Class of Supply-level BRAG Status that summarizes the Tracked Supplies beneath that class.
+_Avoid_: Item inventory, category average
 
 **Burn Rate**:
-The expected consumption rate of a Tracked Supply by a Supported Unit.
+The expected integer quantity of a Tracked Supply consumed by a Unit per 24 hours.
 _Avoid_: Usage, depletion speed
 
-**Burn Rate Change**:
-An event that changes a Supported Unit's expected consumption rate because mission conditions changed.
-_Avoid_: Inventory update, status change
-
 **Projected Black Time**:
-The estimated time when a Tracked Supply will reach Black Supply Status if conditions do not change.
+The estimated time when a Tracked Supply will reach Black BRAG Status if conditions do not change.
 _Avoid_: Deadline, depletion time
 
 **Days of Supply**:
-The amount of time a unit can sustain itself with current and projected inventory.
+The amount of time a Unit can sustain itself with current and projected inventory.
 _Avoid_: Stock duration, inventory runway
 
-**Supply Signal**:
-An observation that indicates current or future sustainment demand.
-_Avoid_: Demand signal, LOGSTAT when the signal is not a formal report
-
 **LOGSTAT**:
-A logistics status report from a unit about supplies, equipment, or sustainment needs.
+A logistics status report from a Unit about supplies, equipment, or sustainment needs.
 _Avoid_: Any supply signal
 
-**Logistics Support Area**:
-The supply origin where sustainment resources and Supply Convoys are staged before movement.
-_Avoid_: Depot, base, warehouse
+**LOGSYNC Matrix**:
+A planning view that organizes sustainment movements by Unit and time.
+_Avoid_: Calendar, schedule
 
-**Logistics Release Point**:
-A planned handoff location where a Supply Convoy transfers supplies toward a Supported Unit.
-_Avoid_: Destination, drop-off, depot
+**Movement**:
+A logistics movement planned or executed for a Unit over a scheduled time interval.
+_Avoid_: Generic calendar event, map animation
 
-**Point of Interest**:
-A named fixed location that matters to movement or sustainment, such as a bridge, port, airfield, base, checkpoint, or forward operating base.
-_Avoid_: Marker, pin, place
+**Movement Status**:
+The planning or execution state of a Movement.
+_Avoid_: BRAG Status
 
-**Hazard Observation**:
-A reported event or condition that may affect movement, safety, or sustainment decisions.
-_Avoid_: Enemy marker, incident, threat when the report is still observational
+**Proposed Movement**:
+A Movement that has been planned but is not yet executing.
+_Avoid_: Approved order unless approval is explicit
 
-**Denied Area**:
-A derived geospatial area where movement is currently considered unacceptable or strongly discouraged because of hazards or command guidance.
-_Avoid_: Enemy contact, hazard, no-go zone
+**In-Progress Movement**:
+A Movement that is currently executing.
+_Avoid_: Completed movement
 
-**Hazard Buffer Rule**:
-A simple scenario rule that turns a Hazard Observation type into a Denied Area size.
-_Avoid_: Threat model, confidence model
+**Movement Window**:
+The scheduled time interval for a Movement.
+_Avoid_: Forecast Horizon
 
-**Named Location Directory**:
-The scenario's list of named places and their coordinates, used to resolve radio references into map locations.
-_Avoid_: Gazetteer, location database
+**Daily Movement Capacity**:
+The maximum number of Movements that may be scheduled for a parent Unit on a day.
+_Avoid_: Visual column width
 
-**Relative Location Reference**:
-A described location based on a named place, bearing, and distance.
-_Avoid_: Offset, relative point
+**Movement Destination Unit**:
+The Supported Unit that a Movement is intended to resupply or serve.
+_Avoid_: Movement executor, convoy owner
 
-**Candidate Route**:
-A route option for a Supply Convoy, represented on the map and available for evaluation or approval.
-_Avoid_: Route segment, map line
+**Movement Payload**:
+The Tracked Supplies and quantities carried by a Movement.
+_Avoid_: Class of Supply label as the payload itself
 
-**Generated Route**:
-A Candidate Route produced by a routing service from an origin, destination, and active Denied Areas.
-_Avoid_: Automatic reroute, route segment
+**Movement Class Rollup**:
+The Classes of Supply represented by a Movement Payload.
+_Avoid_: Specific carried supplies
 
-**Route Variant**:
-An alternative path for a Movement that does not by itself change the broader sustainment concept.
-_Avoid_: COA when only the path changes
+**Course of Action**:
+A proposed sustainment response derived from the Logistics Picture.
+_Avoid_: Generic task, guaranteed order
 
-**Route Evaluation**:
-The assessment of a Candidate Route against denied areas, hazards, timing, and delivery impact.
-_Avoid_: Route score, route status
+**COA Regeneration**:
+Re-evaluation of Courses of Action after relevant logistics state changes.
+_Avoid_: Manual planning note
 
 **Taiwan Scenario**:
-A real Taiwan geospatial setting with fictional units, named places, events, and sustainment problems layered onto the map.
-_Avoid_: Taiwan war plan, fictional island
+A real Taiwan geospatial setting with fictional Units, named places, inventory, and sustainment problems layered onto the map.
+_Avoid_: Taiwan war plan, real-world disposition
 
-**Kaohsiung-Tainan Corridor**:
-The bounded Taiwan Scenario area for v1, centered on a single-night contested resupply operation between Kaohsiung and Tainan.
-_Avoid_: Island-wide theater, whole Taiwan map
+**3rd Infantry Brigade Combat Team**:
+The default Selected Unit for the initial LCOP.
+_Avoid_: 3rd Infantry Bridge Combat Team
 
-**Quarterback**:
-The Agent Callsign used by the Radio-to-Map Logistics Agent in the v1 scenario.
-_Avoid_: Godfather, radio bot
+**HHC, 3IBCT**:
+The headquarters company Reporting Unit for the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Headquarters pin
 
-**Hammer 4**:
-The callsign for the v1 Logistics Watch Officer.
-_Avoid_: Overlord, Sentinel 6
+**2-27 IN**:
+An infantry battalion Reporting Unit in the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Generic infantry unit
 
-**Mule 2**:
-The callsign for the v1 Supply Convoy.
-_Avoid_: Mule 3
+**2-35 IN**:
+An infantry battalion Reporting Unit in the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Generic infantry unit
 
-**Viper**:
-A v1 company-sized Supported Unit with fuel-critical sustainment risk.
-_Avoid_: Crusader
+**3-4 CAV**:
+A cavalry squadron Reporting Unit in the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Generic cavalry unit
 
-**Archer**:
-A v1 battery-sized Supported Unit with ammunition-critical sustainment risk.
-_Avoid_: Crusader
+**3-7 FA**:
+A field artillery battalion Reporting Unit in the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Generic artillery unit
 
-**Nomad**:
-A v1 company-sized Supported Unit with lower-urgency Class I sustainment risk.
-_Avoid_: Crusader
+**325 BSB**:
+A brigade support battalion Reporting Unit in the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Generic logistics unit
 
-**Viper 6**:
-The radio callsign for the leader or command element speaking for Viper.
-_Avoid_: Viper when referring to the speaker
-
-**Archer 6**:
-The radio callsign for the leader or command element speaking for Archer.
-_Avoid_: Archer when referring to the speaker
-
-**Nomad 6**:
-The radio callsign for the leader or command element speaking for Nomad.
-_Avoid_: Nomad when referring to the speaker
-
-**Radio Rollup**:
-An Addressed Response that summarizes recent radio traffic, geospatial changes, logistics implications, and unresolved uncertainties.
-_Avoid_: Chat summary, transcript summary
-
-**Reroute Recommendation**:
-An Addressed Response or planning output that proposes how a Supply Convoy should change route after a blockage or risk report.
-_Avoid_: Navigation instruction, map direction
-
-**Live Radio View**:
-The operator view that shows radio traffic over time by channel, transcript, and agent-derived activity.
-_Avoid_: Audio player, chat log
-
-**Supply Officer View**:
-The main operator workspace that shows the Logistics Picture, inventory status, convoy status, synchronized radio evidence, and action choices for the Logistics Watch Officer.
-_Avoid_: Dashboard, admin view
-
-**Evidence Pane**:
-The synchronized part of the Supply Officer View that presents Live Radio View material supporting current logistics state and decisions.
-_Avoid_: Separate radio app, transcript sidebar
-
-**Approved Reroute**:
-A Reroute Recommendation selected by the Logistics Watch Officer for transmission or dispatch.
-_Avoid_: Automatic reroute, agent reroute
-
-**Route Tradeoff**:
-A simple comparison between reroute options, usually emphasizing speed, risk, and delivery impact.
-_Avoid_: Full logistics optimization, multi-convoy planning
-
-**Sustainment-Preserving Plan**:
-A future planning concept that changes supply sequencing, partial delivery, or staging to prevent critical units from going black.
-_Avoid_: Basic reroute, fastest route
-
-**Quarterback Capability**:
-A user-visible ability of Quarterback to listen, extract, update, georeference, assess, recommend, or respond.
-_Avoid_: Internal tool, backend service
+**65 BEB**:
+A brigade engineer battalion Reporting Unit in the initial 3rd Infantry Brigade Combat Team LCOP.
+_Avoid_: Generic engineer unit
 
 ## Relationships
 
-- **Tactical Radio Audio** is interpreted by the **Radio-to-Map Logistics Agent**.
-- A **Prerecorded Radio Clip** is **Tactical Radio Audio**.
-- All **Tactical Radio Audio** passes through the **Transcription Pipeline** before interpretation.
-- **LOGNET-1** is the v1 **Radio Channel**.
-- The **Field Radio Console** transmits **Tactical Radio Audio** to **LOGNET-1**.
-- The **Radio-to-Map Logistics Agent** may use an **Agent Callsign** when participating in radio-style exchanges.
-- **Passive Monitoring** updates the **Logistics Picture** without an **Addressed Response**.
-- An **Addressed Response** occurs only when a human participant invokes the **Agent Callsign**.
-- **Quarterback** is the **Agent Callsign** in the **Kaohsiung-Tainan Corridor** scenario.
-- **Hammer 4** is the v1 **Logistics Watch Officer**.
-- **Mule 2** is the v1 **Supply Convoy**.
-- **Viper**, **Archer**, and **Nomad** are v1 **Supported Units**.
-- **Viper 6**, **Archer 6**, and **Nomad 6** are radio speakers for their corresponding **Supported Units**.
-- v1 has one active **LOGPAC** and may show multiple proposed **Movements** as **Courses of Action**.
-- **Tactical Radio Audio** may produce one or more **Interpreted Reports**.
-- A **Radio Transmission** may produce one or more **Semantic Outputs**.
-- A **Semantic Output** may be a **Domain Event** or an **Interaction Intent**.
-- A **Position Update**, **Supply Signal**, and **Hazard Observation** are v1 **Domain Events**.
-- An **Addressed Intent** is a v1 **Interaction Intent**.
-- An **Operator Action** originates from the **Supply Officer View**, not radio interpretation.
-- **COA Approval** and **COA Rejection** are v1 **Operator Actions**.
-- **COA Approval** triggers **COA Application**.
-- **COA Application** is deterministic and not performed by **Quarterback**.
-- **Quarterback** may create a **Draft Transmission** from approved state.
-- **Outbound Audio** may be produced for an **Addressed Response** or approved **Draft Transmission**.
-- **Outbound Audio** follows **Radio Brevity**.
-- A **Radio Transmission** may produce one or more **Proposed Interpretations**.
-- A **Proposed Interpretation** may become an **Auto-Accepted Interpretation**, a **Review-Required Interpretation**, or a **Rejected Interpretation**.
-- The **Agentic Boundary** keeps deterministic work in tools or services rather than agents.
-- An **Interpretation Judge** classifies a **Proposed Interpretation** for auto-acceptance or review.
-- A **Review Trigger** guides the **Interpretation Judge** but does not replace agent judgment.
-- A **Review-Required Interpretation** does not affect consequential operational state until the **Logistics Watch Officer** accepts it.
-- A **Radio Rollup** explains recent **Interpreted Reports** and their impact on the **Logistics Picture**.
-- A **Reroute Recommendation** may follow from a blocked route, delayed **Supply Convoy**, or changed risk in the **Logistics Picture**.
-- The **Live Radio View** visualizes **Tactical Radio Audio**, transcripts, and agent-derived activity over time.
-- The **Supply Officer View** visualizes the **Logistics Picture** and lets the **Logistics Watch Officer** select an **Approved Reroute**.
-- The **Evidence Pane** embeds **Live Radio View** material inside the **Supply Officer View**.
-- **Quarterback** may propose a **Reroute Recommendation**, but only the **Logistics Watch Officer** can create an **Approved Reroute**.
-- A v1 **Reroute Recommendation** presents **Route Tradeoffs**, not a full **Sustainment-Preserving Plan**.
-- An **Interpreted Report** is appended to the **Event Ledger**.
-- The **Radio-to-Map Logistics Agent** updates the **Logistics Picture**.
-- The **Logistics Picture** is derived from the **Event Ledger**.
-- The **Logistics Common Operating Picture** is the map-first presentation of the **Logistics Picture**.
-- A map visualizes selected parts of the **Logistics Picture**.
-- A **Supported Unit** may generate sustainment demand.
-- A **Logistics Watch Officer** decides how the **Logistics Picture** affects the resupply plan.
-- A **Supply Convoy** executes resupply for one or more **Supported Units**.
-- A **Logistics Support Area**, **LOGPAC**, and **Supported Unit** may each have **Inventory**.
-- A **LOGPAC** may include a **Supply Convoy** and its **Supply Load**.
-- A **Resupply Plan** may include one or more **LOGPACs**.
-- **COA Regeneration** follows accepted **Domain Events** or relevant **Operator Actions**.
-- **COA Approval** accepts an **Executable Course of Action** as a whole.
-- A **Course of Action** may create or update one or more **Movements**.
-- A v1 **Executable Course of Action** specifies a **LOGPAC**, **Movement**, assigned **Supply Convoy**, route, timing, assumptions, risks, and projected effect.
-- In v1, each **Course of Action** contains one **Movement**.
-- A **Course of Action** has **Requirement Coverage** over one or more **Sustainment Requirements**.
-- A v1 **Sustainment Requirement** is inferred from projected supply state, not managed directly by the **Logistics Watch Officer**.
-- A **LOGPAC** may include an **Opportunistic Load** when urgent **Sustainment Requirements** are covered and **Carrying Capacity** remains.
-- A **Movement** may be shown in the **LOGSYNC Matrix**.
-- A **Movement** has one **Movement Status**.
-- A **Movement** directs one **LOGPAC** from origin to destination.
-- A **Movement** may assign one **Supply Convoy** to execute it.
-- A **Supply Convoy** executes one active **Movement** at a time.
-- A **LOGPAC** may fulfill one active **Movement** at a time.
-- A **Transport Asset** carries part or all of a **Supply Load**.
-- A **Transport Asset**, **Supply Convoy**, or **LOGPAC** has **Carrying Capacity**.
-- A **Course of Action** has a **COA Concept** and **COA Detail**.
-- A **Course of Action** may be prepared for wargaming through a **LOGSYNC Matrix** or **Decision Support Matrix**.
-- A **Logistics Support Area** or **Supported Unit** may have **Storage Capacity**.
-- A **Supply Convoy** carries one **Supply Load** at a time.
-- A **Supply Load** contains one or more **Tracked Supplies**.
+- The **Logistics Watch Officer** is the primary user of the **Logistics Common Operating Picture**.
+- The **Logistics Common Operating Picture** is the primary application workspace.
+- The **Logistics Common Operating Picture** presents the **Logistics Picture**.
+- The initial **Logistics Common Operating Picture** opens with **3rd Infantry Brigade Combat Team** as the default **Selected Unit**.
+- A **Selected Unit** drives the **Unit Summary Pane** and map focus.
+- A **Detail Pane** may open from a **Unit Summary Pane** section.
+- Map selection and Reporting Unit list selection may identify the same **Selected Unit**.
+- A **Selected Unit** may retain **Parent Unit Context** when selected from a higher-level Unit.
+- **Parent Unit Navigation** returns from a subordinate **Selected Unit** to its immediate **Parent Unit Context**.
+- A **Unit** has one **Unit Display Name** and may have one **Unit Short Label**.
+- A **Unit** may have one or more **Unit Tags**.
+- A **Unit** may have an **MGRS Grid Reference** for operator-facing location.
+- A **Unit** may have one or more **Reporting Units**.
+- A **Reporting Unit** contributes **BRAG Status** values to a higher-level sustainment summary.
+- A **Reporting Unit** may become the **Selected Unit**.
+- A **Supported Unit** is a kind of **Reporting Unit** in the initial sustainment vocabulary.
+- A selected parent **Unit** may show **Reporting Units** by **Class of Supply Rollup**.
+- A selected **Reporting Unit** may show an **Inventory Projection Matrix** by **Tracked Supply**.
+- A selected **Reporting Unit** may present **Tracked Supplies** as a flat list while preserving each item's **Class of Supply**.
+- A parent **Unit** **Class of Supply Rollup** reflects its **Reporting Units** inventory state.
+- **HHC, 3IBCT**, **2-27 IN**, **2-35 IN**, **3-4 CAV**, **3-7 FA**, **325 BSB**, and **65 BEB** are initial **Reporting Units** for **3rd Infantry Brigade Combat Team**.
+- The initial Unit names are reused as fictional scenario entities within the **Taiwan Scenario**.
+- The initial LCOP tracks **Tracked Supplies** only in **Class I**, **Class III**, and **Class V**.
 - A **Tracked Supply** belongs to one **Class of Supply**.
-- A **Tracked Supply** for a **Supported Unit** has one **Supply Status**.
-- A **Status Cutoff** may vary by **Supported Unit**, **Tracked Supply**, and mission context.
-- A **Burn Rate** may vary by **Supported Unit** and **Tracked Supply**.
-- A **Burn Rate Change** may alter a **Projected Black Time** without an immediate **Inventory** quantity update.
-- A **Projected Black Time** depends on current supply, **Burn Rate**, and **Status Cutoff**.
-- **Days of Supply** depends on **Inventory**, **Burn Rate**, and mission context.
-- A **Supply Signal** may update **Inventory**, **Supply Status**, or **Projected Black Time**.
-- A **LOGSTAT** is one kind of **Supply Signal**.
-- A **Supply Convoy** may originate from a **Logistics Support Area**.
-- A **Supply Convoy** may deliver to a **Logistics Release Point** or directly to a **Supported Unit**.
-- A **Logistics Release Point** may be separate from or co-located with a **Supported Unit**.
-- A **Point of Interest** may be used as a **Logistics Support Area**, **Logistics Release Point**, checkpoint, bridge, base, port, or airfield.
-- A **Hazard Observation** may contribute to a **Denied Area**.
-- A **Hazard Buffer Rule** derives a **Denied Area** from a **Hazard Observation**.
-- A **Denied Area** influences **Route Tradeoffs**.
-- A **Named Location Directory** resolves named places in **Tactical Radio Audio** into coordinates.
-- A **Relative Location Reference** uses a **Point of Interest** from the **Named Location Directory**.
-- A **Denied Area** may be derived from a georeferenced **Relative Location Reference**.
-- A **Candidate Route** is evaluated through a **Route Evaluation**.
-- A **Generated Route** is a **Candidate Route**.
-- A **Route Variant** may be a **Generated Route**.
-- A **Movement** may have one selected **Route Variant**.
-- A **Route Evaluation** may determine that a **Candidate Route** intersects a **Denied Area**.
-- **Quarterback Capabilities** define what the product must demonstrate externally, regardless of the internal agent/tool split.
+- A **Tracked Supply** has one **Unit of Issue**.
+- A **Unit of Issue** may have an optional **Quantity per Unit Pack**.
+- A **Unit** may have a **Requirement Baseline** for a **Tracked Supply**.
+- The initial LCOP stores **Requirement Baseline** per **Unit** and **Tracked Supply**.
+- A **Requirement Baseline** is not mission-specific in the initial LCOP.
+- Active **Inventory Lines** require a positive **Requirement Baseline** in the initial LCOP.
+- A **Unit** may have a **Burn Rate** for a **Tracked Supply**.
+- The initial LCOP stores **Burn Rate** per **Unit** and **Tracked Supply**.
+- The initial LCOP expresses **Burn Rate** in the **Tracked Supply** item's **Unit of Issue** per 24 hours.
+- Inventory quantities are expressed in the **Tracked Supply** item's **Unit of Issue**.
+- The initial **Forecast Horizons** are 24, 48, 72, and 96 hours.
+- **On-Hand Inventory** reflects current status.
+- **Forecast Horizons** reflect projected future status.
+- A **Forecast Horizon** contains **Projected Inventory** for a **Tracked Supply**.
+- **Projected Inventory** is computed from **On-Hand Inventory**, **Burn Rate**, and **Forecast Horizon** in the initial LCOP.
+- **Displayed Inventory Quantity** does not go below zero.
+- Projected **BRAG Status** is calculated from logistics inputs, not manually entered as standalone color cells.
+- A **Supply Percentage** compares displayed inventory quantity to a **Requirement Baseline**.
+- The initial LCOP uses **Default BRAG Bands** for deriving **BRAG Status**.
+- **Default BRAG Bands** are product defaults, not authoritative doctrine.
+- **Default BRAG Bands** map **Supply Percentage** to **Green Status** at 80% or higher, **Amber Status** from 50% to less than 80%, **Red Status** from 30% to less than 50%, and **Black Status** below 30%.
+- Inventory cell **BRAG Status** is derived from **Supply Percentage** and applicable **Status Cutoffs**.
+- An **Inventory Projection Matrix** shows **On-Hand Inventory** and the standard **Forecast Horizons**.
+- An **Inventory Projection Matrix** may summarize status by **Tracked Supply** or **Class of Supply**.
+- The default **Inventory View Mode** groups **Tracked Supplies** by **Class of Supply**.
+- The initial LCOP only needs the Class-based **Inventory View Mode**.
+- A **Class of Supply Rollup** summarizes one or more **Tracked Supplies** for one **Class of Supply**.
+- A **Class of Supply Rollup** takes the most constrained **BRAG Status** among its underlying **Tracked Supplies** for the same **Forecast Horizon**.
+- The **72-Hour Sustainment Window** is the central planning reference within the standard **Forecast Horizons**.
+- A selected **Reporting Unit** inventory view supports **Inventory Corrections**, **Inventory Additions**, and **Inventory Removals**.
+- An **Inventory Line** represents one **Tracked Supply** in one **Unit**'s active **Inventory**.
+- An **Inventory Update** may contain multiple **Inventory Corrections** and **Inventory Removals**.
+- An **Inventory Correction** directly adjusts **On-Hand Inventory**.
+- An **Inventory Correction** is trusted over model-predicted current inventory values.
+- An **Inventory Correction** does not change **Burn Rate**.
+- An **Inventory Addition** adds an **Inventory Line** to a **Unit**'s active **Inventory**.
+- An **Inventory Addition** selects a **Tracked Supply** from the **Supply Catalog**.
+- An **Inventory Addition** includes initial **On-Hand Inventory** for the new **Inventory Line**.
+- An **Inventory Addition** includes a **Requirement Baseline** for the new **Inventory Line**.
+- An **Inventory Addition** includes a **Burn Rate** for the new **Inventory Line**.
+- An **Inventory Removal** removes an **Inventory Line** from a **Unit**'s active **Inventory**.
+- Removed **Inventory Lines** do not contribute to active **Inventory Projection Matrix** displays.
+- Removed **Inventory Lines** do not contribute to active **Class of Supply Rollups**.
+- The inventory Edit action is for **Inventory Corrections** and **Inventory Removals**.
+- The Add Items action is for **Inventory Additions**.
+- **Projected Inventory** may be recalculated after an **Inventory Correction**, **Inventory Addition**, or **Inventory Removal**.
+- An **Inventory Correction** may trigger **COA Regeneration**.
+- **COA Regeneration** updates **Courses of Action** from the current **Logistics Picture**.
+- A selected parent **Unit** may open the **LOGSYNC Matrix** in a **Detail Pane**.
+- The **LOGSYNC Matrix** organizes **Movements** by **Unit** and day.
+- A **Movement** is associated with a **Movement Destination Unit**.
+- **LOGSYNC Matrix** rows represent **Movement Destination Units**.
+- A **Movement** has one **Movement Status**.
+- The initial **Movement Status** values include **Proposed Movement** and **In-Progress Movement**.
+- A **Movement** has one **Movement Window**.
+- A **Movement** has one **Movement Payload**.
+- A **Movement Payload** contains **Tracked Supplies** and quantities.
+- A **Movement Class Rollup** is derived from the **Movement Payload**.
+- A **Movement** may display vehicle count and personnel count.
+- The **LOGSYNC Matrix** may show **Daily Movement Capacity** for each day.
+- **Daily Movement Capacity** constrains the number of **Movements** scheduled across the selected parent **Unit** on that day.
 
-## Example dialogue
+## Example Dialogue
 
-> **Dev:** "Does the map own the latest unit and route state?"
-> **Domain expert:** "No. The map visualizes the **Logistics Picture**; it is not the source of truth."
-> **Dev:** "If two radio calls disagree, do we overwrite the older one?"
-> **Domain expert:** "No. Both become **Interpreted Reports** in the **Event Ledger**, and the **Logistics Picture** reflects the best current interpretation."
-> **Dev:** "When Mule 2 reports a disabled HEMTT, who is the UI primarily helping?"
-> **Domain expert:** "The **Logistics Watch Officer**, because they need to know what the report does to tonight's resupply plan."
-> **Dev:** "Can the system answer Overlord 6 directly on the net?"
-> **Domain expert:** "Yes, through its **Agent Callsign**, but the answer must be grounded in the **Event Ledger** and **Logistics Picture**."
-> **Dev:** "Should the agent announce every route update as it detects one?"
-> **Domain expert:** "No. During **Passive Monitoring** it updates the **Logistics Picture** silently; it transmits only as an **Addressed Response**."
-> **Dev:** "Is the first scenario island-wide?"
-> **Domain expert:** "No. v1 focuses on the **Kaohsiung-Tainan Corridor**, and the agent answers as **Quarterback**."
-> **Dev:** "Do we need separate commander and logistics officer callsigns?"
-> **Domain expert:** "No. v1 keeps **Hammer 4** as the single coordinating logistics officer."
-> **Dev:** "Is the rollup the whole demo?"
-> **Domain expert:** "No. The **Radio Rollup** is the primary demo moment, and a later **Reroute Recommendation** shows how the same picture drives convoy planning."
-> **Dev:** "Can Quarterback reroute Mule 2 on its own?"
-> **Domain expert:** "No. **Quarterback** can recommend and answer directly, but a **Logistics Watch Officer** must select an **Approved Reroute**."
-> **Dev:** "Does v1 optimize multi-convoy supply sequencing?"
-> **Domain expert:** "No. v1 shows **Route Tradeoffs**; a **Sustainment-Preserving Plan** is a later capability."
-> **Dev:** "Is an enemy contact itself a no-go polygon?"
-> **Domain expert:** "No. The contact is a **Hazard Observation**; the system may derive a **Denied Area** from it."
-> **Dev:** "Does v1 perform advanced threat modeling?"
-> **Domain expert:** "No. v1 uses **Hazard Buffer Rules** to derive simple **Denied Areas**."
-> **Dev:** "Do we compute every road route dynamically?"
-> **Domain expert:** "No. v1 uses **Generated Routes** from a routing service and lets the **Logistics Watch Officer** approve one."
-> **Dev:** "Does Hammer 4 review every interpretation?"
-> **Domain expert:** "No. The **Interpretation Judge** can auto-accept low-risk interpretations; **Review-Required Interpretations** need Hammer 4 before affecting consequential operational state."
-> **Dev:** "Are review triggers hard-coded doctrine?"
-> **Domain expert:** "No. **Review Triggers** guide the **Interpretation Judge**, and we can tune them as the demo matures."
-> **Dev:** "Should every subsystem be an agent?"
-> **Domain expert:** "No. The **Agentic Boundary** says everything that can avoid being an agent should avoid being an agent."
+> **Dev:** "What should be selected by default?"
+> **Domain expert:** "The initial LCOP opens with **3rd Infantry Brigade Combat Team** as the **Selected Unit**."
+> **Dev:** "If I click **3-4 CAV** in the Reporting Units list, is that different from clicking the map pin?"
+> **Domain expert:** "No. Both make **3-4 CAV** the **Selected Unit** and focus the map on it."
+> **Dev:** "Does the parent Unit show every inventory item for every subordinate Unit?"
+> **Domain expert:** "No. The parent view shows **Reporting Units** by **Class of Supply Rollup**."
+> **Dev:** "What do I see after selecting a Reporting Unit?"
+> **Domain expert:** "You see that Unit's **Tracked Supplies** with On-Hand Inventory and Projected Inventory at 24, 48, 72, and 96 hours."
+> **Dev:** "How does a Class III rollup become Red?"
+> **Domain expert:** "The **Class of Supply Rollup** takes the most constrained **BRAG Status** among the Class III Tracked Supplies for that Forecast Horizon."
+> **Dev:** "Can the Logistics Watch Officer directly edit projected 24, 48, 72, or 96 hour inventory?"
+> **Domain expert:** "No. The Logistics Watch Officer corrects **On-Hand Inventory**; **Projected Inventory** is recalculated from the trusted current state."
 
-## Flagged ambiguities
+## Flagged Ambiguities
 
-- "Radio agent" was used loosely; resolved term: **Radio-to-Map Logistics Agent**, with **Agent Callsign** for radio-net participation.
-- "Reality" was used to mean backend-maintained operational state; resolved term: **Logistics Picture**.
-- "Taiwan" means a **Taiwan Scenario** with real geography and fictional tactical overlays, not a real operational war plan.
+- "Supply Officer View" was used as the main workspace name; resolved term: **Logistics Common Operating Picture**.
+- "Formation" was introduced too broadly; resolved term: **Unit**.
+- "Logistics officer" was used loosely; resolved term: **Logistics Watch Officer**.
+- "GARB" was used once for color coding; resolved term: **BRAG Status**.
+- "OH" was used as a UI abbreviation; resolved term: **On-Hand Inventory**.
+- "PAX" appears in reference logistics products as personnel posture; it is not a **Class of Supply** and is outside the initial sustainment vocabulary.
+- The inventory star marker appears in reference products but has unresolved meaning and is outside initial scope.
+- "Philippines / Calapan" reference imagery informs LCOP interaction patterns, but the initial scenario remains a **Taiwan Scenario**.
+- Real-world Unit names in the initial LCOP are fictional scenario entities, not claims about real-world disposition.
